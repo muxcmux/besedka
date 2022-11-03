@@ -1,0 +1,22 @@
+[package]
+name = "besedka"
+description = "A fast, portable, and lightweight commenting system for your website"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+clap = { version = "4", features = ["derive"] }
+chrono =  { version = "0.4", features = ["clock", "serde"] }
+log = "0.4"
+env_logger = "0.9"
+actix-web = { version = "4", features = ["rustls"] }
+ring = "0.16"
+base64 = "0.13"
+rustls = "0.20"
+rustls-pemfile = "1"
+sqlx = { version = "0.6", features = ["runtime-actix-rustls", "sqlite", "chrono"] }
+argon2 = "0.4"
+rand_core = { version = "0.6", features = ["std"] }
