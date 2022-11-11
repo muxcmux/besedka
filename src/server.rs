@@ -20,6 +20,7 @@ impl Server {
     }
 }
 
+/// Runs the server, blocking the main thread
 pub async fn run(config: Server, db: SqlitePool) -> anyhow::Result<()> {
     tracing::debug!("{:#?}", config);
     tracing::info!("Listening on {}", config.bind);

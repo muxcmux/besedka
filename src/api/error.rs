@@ -7,20 +7,40 @@ use axum::{
 };
 use sqlx::error::DatabaseError;
 
+/// A common error struct for the API which wraps
+/// anyhow and sqlx errors and can be converted into an axum response
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+    /// Use for 401 responses
     #[error("Authentication required")]
     Unauthorized,
+    /// Use for 403 responses
     #[error("You are not allowed to perform this action")]
     Forbidden,
+    /// Use for 404 responses
     #[error("Resource not found")]
     NotFound,
+    /// Use when request is correct, but contains semantic errors,
+    /// e.g. fields fail validation criteria
     #[error("Semantic error in request body")]
     UnprocessableEntity {
         errors: HashMap<Cow<'static, str>, Vec<Cow<'static, str>>>,
     },
-    #[error("A database error occured")]
+    /// Wrapper around database errors which returns 404s
+    /// when rows can't be found and 500s for anything else
+    #[error("{}",
+        match .0 {
+            sqlx::Error::RowNotFound => "Resource not found",
+            _ => "An internal server error occurred"
+        }
+    )]
     Sqlx(#[from] sqlx::Error),
+    /// Any other anyhow errors
+    /// this is convenient when used with anyhow!("error")
+    /// or when we want to return early from a function
+    /// with anyhow::bail!("things crashed")
+    /// for this to work, the fn must return an anyhow result
+    /// which is then converted into this enum variant
     #[error("An internal server error occured")]
     Anyhow(#[from] anyhow::Error),
 }
@@ -32,7 +52,13 @@ impl Error {
             Self::Forbidden => StatusCode::FORBIDDEN,
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::UnprocessableEntity { .. } => StatusCode::UNPROCESSABLE_ENTITY,
-            Self::Sqlx(_) | Self::Anyhow(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::Anyhow(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::Sqlx(e) => {
+                match e {
+                    sqlx::Error::RowNotFound => StatusCode::NOT_FOUND,
+                    _ => StatusCode::INTERNAL_SERVER_ERROR
+                }
+            }
         }
     }
 
@@ -64,7 +90,7 @@ impl IntoResponse for Error {
                 }
 
                 return (StatusCode::UNPROCESSABLE_ENTITY, Json(Errors { errors })).into_response();
-            }
+            },
             Self::Unauthorized => {
                 return (
                     self.status_code(),
@@ -74,15 +100,15 @@ impl IntoResponse for Error {
                     self.to_string(),
                 )
                     .into_response();
-            }
+            },
 
             Self::Sqlx(ref e) => {
                 tracing::error!("SQLx error: {:?}", e);
-            }
+            },
 
             Self::Anyhow(ref e) => {
                 tracing::error!("Generic error: {:?}", e);
-            }
+            },
 
             _ => (),
         }

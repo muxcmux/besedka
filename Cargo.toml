@@ -24,7 +24,7 @@ rand_core = { version = "0.6", features = ["std"] }
 
 sqlx = { version = "0.6", features = ["runtime-tokio-rustls", "sqlite", "chrono"] }
 
-axum = { version = "0.6.0-rc.2", features = ["tower-log"] }
+axum = { version = "0.6.0-rc.4", features = ["tower-log"] }
 axum-server = { version = "0.4", features = ["tls-rustls"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tower = "0.4"

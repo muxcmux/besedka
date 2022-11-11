@@ -1,6 +1,6 @@
-use sqlx::{SqlitePool, query_as, FromRow};
-use serde::Serialize;
+use sqlx::{SqlitePool, query_as};
 use crate::cli::ConfigSetCommand;
+use crate::db::configs::{find, Config};
 
 pub async fn print(db: &SqlitePool, site: String) {
     match find(db, &site).await {
@@ -68,34 +68,10 @@ theme:               {}
     );
 }
 
-#[derive(FromRow, Debug, Serialize)]
-struct Config {
-    site: String,
-    secret: Vec<u8>,
-    anonymous_comments: bool,
-    moderated: bool,
-    comments_per_page: i64,
-    replies_per_comment: i64,
-    minutes_to_edit: i64,
-    theme: String,
-}
-
-impl Config {
-    fn secret(&self) -> String {
-        base64::encode(&self.secret)
-    }
-}
-
 async fn all(db: &SqlitePool) -> anyhow::Result<Vec<Config>> {
     let configs = query_as!(Config, "SELECT * FROM configs")
         .fetch_all(db).await?;
     Ok(configs)
-}
-
-async fn find(db: &SqlitePool, site: &str) -> anyhow::Result<Option<Config>> {
-    let config = query_as!(Config, "SELECT * FROM configs WHERE(site = ?)", site)
-        .fetch_optional(db).await?;
-    Ok(config)
 }
 
 async fn upsert(db: &SqlitePool, site: ConfigSetCommand) -> anyhow::Result<Config>{

@@ -4,7 +4,7 @@ CREATE TABLE configs (
   anonymous_comments   BOOLEAN NOT NULL DEFAULT 1,
   moderated            BOOLEAN NOT NULL DEFAULT 0,
   comments_per_page    INTEGER NOT NULL DEFAULT 25,
-  replies_per_comment  INTEGER NOT NULL DEFAULT 25,
+  replies_per_comment  INTEGER NOT NULL DEFAULT 5,
   minutes_to_edit      INTEGER NOT NULL DEFAULT 3,
   theme                VARCHAR NOT NULL DEFAULT day_and_night
 );
