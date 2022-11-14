@@ -32,3 +32,6 @@ tower = "0.4"
 tower-http = { version = "0.3", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+# rust-embed = { version = "6", features = ["debug-embed"] }
+rust-embed = "6"
+mime_guess = "2"

@@ -1,17 +1,24 @@
-use std::sync::Arc;
+mod assets;
+
+use std::{sync::Arc, time::Duration};
 
 use anyhow::Context;
 
 use axum::{
     routing::get,
-    Router, response::IntoResponse, Extension
+    Router, response::IntoResponse, Extension, body::Bytes
 };
 
 use sqlx::SqlitePool;
-use tower_http::{trace::TraceLayer, compression::CompressionLayer};
-use crate::api;
+use tower::ServiceBuilder;
+use tower_http::{
+    trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
+    LatencyUnit, timeout::TimeoutLayer, compression::CompressionLayer,
+};
 
+use crate::api;
 use super::cli::Server;
+
 use axum_server::tls_rustls::RustlsConfig;
 
 impl Server {
@@ -45,12 +52,24 @@ pub async fn run(config: Server, db: SqlitePool) -> anyhow::Result<()> {
 }
 
 fn router(context: Arc<api::AppContext>) -> Router {
+    let middleware = ServiceBuilder::new()
+        .layer(
+            TraceLayer::new_for_http()
+                .on_body_chunk(|chunk: &Bytes, latency: Duration, _: &tracing::Span| {
+                    tracing::trace!(size_bytes = chunk.len(), latency = ?latency, "sending body chunk")
+                })
+                .make_span_with(DefaultMakeSpan::new().include_headers(true))
+                .on_response(DefaultOnResponse::new().include_headers(true).latency_unit(LatencyUnit::Micros)),
+        )
+        .layer(CompressionLayer::new())
+        .layer(TimeoutLayer::new(Duration::from_secs(5)))
+        .layer(Extension(context));
+
     Router::new()
         .route("/", get(root))
         .merge(api::comments::router())
-        .layer(Extension(context))
-        .layer(CompressionLayer::new())
-        .layer(TraceLayer::new_for_http())
+        .merge(assets::router())
+        .layer(middleware.into_inner())
 }
 
 fn build_context(db: SqlitePool) -> Arc<api::AppContext> {
