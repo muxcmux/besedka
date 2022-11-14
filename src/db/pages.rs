@@ -9,4 +9,3 @@ pub struct Page {
   pub comments_count: i64,
   pub locked_at: Option<NaiveDateTime>
 }
-

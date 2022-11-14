@@ -23,11 +23,10 @@ the binary executable and run the server with:
 
     $ ./besedka server
 
-On your website(s) you can embed comments with the following snippet:
+On your website(s) put the following snippet where you want the comments to appear:
 
 ```html
-<script type="text/javascript" src="https://your-server-which-hosts-besedka.com/embed.js" defer></script>
-<div id="besedka"></div>
+<script type="text/javascript" src="https://your-besedka-server.com/comments.js" defer></script>
 ```
 
 That's it!
@@ -41,7 +40,7 @@ default config will be created upon running the program for the first time. To s
 
 You can have different settings per hostname:
 
-    $ ./besedka config set --site blog.example.com --theme sleek --moderated true
+    $ ./besedka config set --site blog.example.com --theme plain --moderated true
 
 Please keep the `secret`s for your sites private and don't display them anywhere. You will be using
 those to sign the configuration object when embedding Besedka on your website. If you accidentally
@@ -58,7 +57,7 @@ See other available config commands:
 
 A moderator can either be set with a signed configuration object, or one can be added from the CLI:
 
-    $ ./besedka moderators add --name "Brian Kernighan" --pass l3g3nd4ry_h4x0r
+    $ ./besedka moderators add --username brian --name "Brian Kernighan" --pass l3g3nd4ry_h4x0r
 
 Note that logging in from the comment widget UI is only available for moderators created from the
 CLI. Moderators linked via a config object will not be able to login via the widget UI as Besedka
@@ -109,9 +108,9 @@ the default config:
 * `minutes_to_edit`
 * `theme`
 
-The `user` object is used to link your existing users to comments. They this works is by specifying
-your currently logged in user's `id` in the `user` object. You can optionally pass `username`,
-`name`, `moderator`, and `avatar` keys.
+The `user` object is used to link your existing users to comments. This works is by specifying your
+currently logged in user's `id` in the `user` object. You can optionally pass `username`, `name`,
+`moderator`, and `avatar` keys.
 
 #### Signing the config
 

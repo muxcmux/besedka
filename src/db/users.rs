@@ -22,12 +22,14 @@ pub struct User {
   pub avatar: Option<String>
 }
 
+/// Returns all moderators for a given site
 pub async fn all(db: &SqlitePool, site: &str) -> anyhow::Result<Vec<User>> {
     let users = query_as!(User, "SELECT * FROM users WHERE moderator = ? AND site = ?", true, site)
         .fetch_all(db).await?;
     Ok(users)
 }
 
+/// Finds a moderator by a username for a given site
 pub async fn find_moderator_by_username(db: &SqlitePool, site: &str, username: &str) -> anyhow::Result<Option<User>> {
     let user = query_as!(
             User,
@@ -39,6 +41,9 @@ pub async fn find_moderator_by_username(db: &SqlitePool, site: &str, username: &
     Ok(user)
 }
 
+/// Inserts a new moderator for a site and returns
+/// the newly inserted row.
+/// Password is hashed with Argon2 before saving
 pub async fn insert_moderator(db: &SqlitePool, moderator: ModeratorsAddCommand, site: &str) -> anyhow::Result<Option<User>> {
     let password = moderator.password.as_bytes();
     let salt = SaltString::generate(&mut OsRng);

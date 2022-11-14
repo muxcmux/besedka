@@ -8,7 +8,8 @@ use axum::{
 use sqlx::error::DatabaseError;
 
 /// A common error struct for the API which wraps
-/// anyhow and sqlx errors and can be converted into an axum response
+/// anyhow and sqlx errors and can be converted into
+/// an axum response
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     /// Use for 401 responses
