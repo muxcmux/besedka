@@ -88,11 +88,17 @@ pub struct ConfigSetCommand {
     pub site: String,
 
     #[arg(long)]
-    /// Toggles anonymous comments
+    /// Set to true to restrict reading and writing comments
+    /// only to authorised users or logged in moderators
+    pub private: Option<bool>,
+
+    #[arg(long)]
+    /// Set to true to allow anyone to post comments
     pub anonymous_comments: Option<bool>,
 
     #[arg(long)]
-    /// Toggles moderation before comment is visible
+    /// Set true to require a moderator to approve comments
+    /// before they are visible to everyone on your page
     pub moderated: Option<bool>,
 
     #[arg(long)]

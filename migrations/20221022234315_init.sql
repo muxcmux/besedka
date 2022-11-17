@@ -1,6 +1,7 @@
 CREATE TABLE configs (
   site                 VARCHAR NOT NULL UNIQUE,
   secret               BLOB NOT NULL UNIQUE DEFAULT (randomblob(32)),
+  private              BOOLEAN NOT NULL DEFAULT 0,
   anonymous_comments   BOOLEAN NOT NULL DEFAULT 1,
   moderated            BOOLEAN NOT NULL DEFAULT 0,
   comments_per_page    INTEGER NOT NULL DEFAULT 25,
@@ -27,7 +28,9 @@ CREATE TABLE users (
   moderator      BOOLEAN NOT NULL DEFAULT 0,
   third_party_id VARCHAR,
   avatar         TEXT,
-  UNIQUE(site, username)
+  sid            VARCHAR,
+  UNIQUE(site, username),
+  UNIQUE(sid)
 );
 
 CREATE TRIGGER cleanup_users_site AFTER INSERT ON users
@@ -43,7 +46,7 @@ CREATE TABLE pages (
   site           VARCHAR NOT NULL,
   path           VARCHAR NOT NULL,
   comments_count INTEGER NOT NULL DEFAULT 0,
-  locked_at      DATETIME,
+  locked         BOOLEAN NOT NULL DEFAULT 0,
   UNIQUE(site, path)
 );
 
@@ -62,7 +65,7 @@ CREATE TABLE comments (
   body          VARCHAR NOT NULL,
   avatar        TEXT,
   replies_count INTEGER NOT NULL DEFAULT 0,
-  locked_at     DATETIME,
+  locked        BOOLEAN NOT NULL DEFAULT 0,
   reviewed_at   DATETIME,
   created_at    DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updated_at    DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))

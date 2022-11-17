@@ -6,14 +6,14 @@ use anyhow::Context;
 
 use axum::{
     routing::get,
-    Router, response::IntoResponse, Extension, body::Bytes
+    Router, response::IntoResponse, Extension, body::Bytes, http::{Method, HeaderValue}
 };
 
 use sqlx::SqlitePool;
 use tower::ServiceBuilder;
 use tower_http::{
     trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
-    LatencyUnit, timeout::TimeoutLayer, compression::CompressionLayer,
+    LatencyUnit, timeout::TimeoutLayer, compression::CompressionLayer, cors::{CorsLayer, Any},
 };
 
 use crate::api;
@@ -53,6 +53,7 @@ pub async fn run(config: Server, db: SqlitePool) -> anyhow::Result<()> {
 
 fn router(context: Arc<api::AppContext>) -> Router {
     let middleware = ServiceBuilder::new()
+        .layer(CompressionLayer::new())
         .layer(
             TraceLayer::new_for_http()
                 .on_body_chunk(|chunk: &Bytes, latency: Duration, _: &tracing::Span| {
@@ -61,9 +62,9 @@ fn router(context: Arc<api::AppContext>) -> Router {
                 .make_span_with(DefaultMakeSpan::new().include_headers(true))
                 .on_response(DefaultOnResponse::new().include_headers(true).latency_unit(LatencyUnit::Micros)),
         )
-        .layer(CompressionLayer::new())
         .layer(TimeoutLayer::new(Duration::from_secs(5)))
-        .layer(Extension(context));
+        .layer(Extension(context))
+        .layer(CorsLayer::permissive());
 
     Router::new()
         .route("/", get(root))

@@ -10,6 +10,7 @@ use crate::cli::ConfigSetCommand;
 pub struct Config {
     pub site: String,
     pub secret: Vec<u8>,
+    pub private: bool,
     pub anonymous_comments: bool,
     pub moderated: bool,
     pub comments_per_page: i64,
@@ -54,6 +55,7 @@ pub async fn insert(db: &SqlitePool, args: ConfigSetCommand) -> anyhow::Result<C
     let mut insert = String::from("INSERT INTO configs (site");
     let mut values = String::from("VALUES (?");
 
+    append(&args.private, "private", &mut insert, &mut values);
     append(&args.anonymous_comments, "anonymous_comments", &mut insert, &mut values);
     append(&args.moderated, "moderated", &mut insert, &mut values);
     append(&args.comments_per_page, "comments_per_page", &mut insert, &mut values);
@@ -69,6 +71,7 @@ pub async fn insert(db: &SqlitePool, args: ConfigSetCommand) -> anyhow::Result<C
 
     result = result.bind(&args.site);
 
+    if let Some(a) = args.private { result = result.bind(a) }
     if let Some(a) = args.anonymous_comments { result = result.bind(a) }
     if let Some(a) = args.moderated { result = result.bind(a) }
     if let Some(a) = args.comments_per_page { result = result.bind(a) }
@@ -88,6 +91,7 @@ pub async fn insert(db: &SqlitePool, args: ConfigSetCommand) -> anyhow::Result<C
 pub async fn update(db: &SqlitePool, existing: Config, args: ConfigSetCommand) -> anyhow::Result<Config> {
     let mut update = String::from("UPDATE configs SET");
 
+    if let Some(_) = args.private { update.push_str(" private = ?") };
     if let Some(_) = args.anonymous_comments { update.push_str(" anonymous_comments = ?") };
     if let Some(_) = args.moderated { update.push_str(" moderated = ?") };
     if let Some(_) = args.comments_per_page { update.push_str(" comments_per_page = ?") };
@@ -99,6 +103,7 @@ pub async fn update(db: &SqlitePool, existing: Config, args: ConfigSetCommand) -
 
     let mut result = query(&update);
 
+    if let Some(a) = args.private { result = result.bind(a) }
     if let Some(a) = args.anonymous_comments { result = result.bind(a) }
     if let Some(a) = args.moderated { result = result.bind(a) }
     if let Some(a) = args.comments_per_page { result = result.bind(a) }

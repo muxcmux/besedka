@@ -48,6 +48,7 @@ fn print_config(cfg: &Config) {
 {}
 {}
 secret:              {}
+private:             {}
 anonymous_comments:  {}
 moderated:           {}
 comments_per_page:   {}
@@ -58,6 +59,7 @@ theme:               {}
         cfg.site,
         "-".repeat(cfg.site.len()),
         cfg.secret(),
+        cfg.private,
         cfg.anonymous_comments,
         cfg.moderated,
         cfg.comments_per_page,

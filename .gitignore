@@ -1,5 +1,4 @@
 /certs
 /target
 /frontend/dist
-.env
 *.sqlite

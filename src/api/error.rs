@@ -44,6 +44,10 @@ pub enum Error {
     /// which is then converted into this enum variant
     #[error("An internal server error occured")]
     Anyhow(#[from] anyhow::Error),
+    #[error("{}", .0)]
+    Json(#[from] serde_json::Error),
+    #[error("{}", .0)]
+    BadRequest(&'static str)
 }
 
 impl Error {
@@ -54,6 +58,8 @@ impl Error {
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::UnprocessableEntity { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             Self::Anyhow(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::BadRequest(_) => StatusCode::BAD_REQUEST,
+            Self::Json(_) => StatusCode::BAD_REQUEST,
             Self::Sqlx(e) => {
                 match e {
                     sqlx::Error::RowNotFound => StatusCode::NOT_FOUND,
@@ -117,6 +123,9 @@ impl IntoResponse for Error {
         (self.status_code(), self.to_string()).into_response()
     }
 }
+
+use crate::api::Result;
+
 pub trait ResultExt<T> {
     fn on_constraint(
         self,
@@ -132,11 +141,11 @@ where
     fn on_constraint(
         self,
         name: &str,
-        map_err: impl FnOnce(Box<dyn DatabaseError>) -> Error,
+        closure: impl FnOnce(Box<dyn DatabaseError>) -> Error,
     ) -> Result<T, Error> {
         self.map_err(|e| match e.into() {
             Error::Sqlx(sqlx::Error::Database(dbe)) if dbe.constraint() == Some(name) => {
-                map_err(dbe)
+                closure(dbe)
             }
             e => e,
         })

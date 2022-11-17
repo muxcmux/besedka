@@ -1,19 +1,19 @@
 use crate::{
     api::{Context, Result},
-    db::configs::{find_or_default, Config},
+    db::{configs::Config, pages::{find_by_site_and_path, create_or_find_by_site_and_path}, users::get_commenter},
 };
-use axum::{extract::Path, routing::{get, post}, Json, Router};
+use axum::{extract::Path, routing::post, Json, Router};
 use chrono::{DateTime, Utc};
-use serde::Serialize;
-use sqlx::{query, query_as, FromRow, SqlitePool};
+use serde::{Serialize, Deserialize};
+use sqlx::{query_as, FromRow, SqlitePool};
 
-use super::{extractors::ExtractSitePageAndConfig, Cursor, Error};
+use super::{Cursor, Error,  AuthenticatedConfig, extractors::AuthenticatedModerator};
 
 pub fn router() -> Router {
     Router::new()
-        .route("/api/comments/*page", get(comments))
-        .route("/api/comments/*page", post(post_comment))
-        .route("/api/thread/:comment_id", get(thread))
+        .route("/api/comments", post(comments))
+        .route("/api/comment", post(post_comment))
+        .route("/api/thread/:comment_id", post(thread))
 }
 
 #[derive(FromRow, Clone, Debug, Serialize)]
@@ -24,7 +24,7 @@ struct Comment {
     body: String,
     avatar: Option<String>,
     replies_count: i64,
-    locked_at: Option<DateTime<Utc>>,
+    locked: bool,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -37,7 +37,7 @@ struct CommentWithReplies {
     body: String,
     avatar: Option<String>,
     replies_count: i64,
-    locked_at: Option<DateTime<Utc>>,
+    locked: bool,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     thread: Thread,
@@ -56,6 +56,41 @@ struct CommentsPage {
     comments: Vec<CommentWithReplies>,
 }
 
+#[derive(Deserialize, Debug)]
+struct CommentsRequest {
+    site: String,
+    path: String,
+    config: Option<String>,
+    signature: Option<String>,
+}
+
+impl AuthenticatedConfig for CommentsRequest {
+    fn site(&self)      -> String { self.site.clone() }
+    fn json(&self)      -> Option<String> { self.config.clone() }
+    fn signature(&self) -> Option<String> { self.signature.clone() }
+}
+
+#[derive(Deserialize)]
+struct PostCommentRequest {
+    site: String,
+    path: String,
+    comment: CommentData,
+    config: Option<String>,
+    signature: Option<String>,
+}
+
+impl AuthenticatedConfig for PostCommentRequest {
+    fn site(&self)      -> String { self.site.clone() }
+    fn json(&self)      -> Option<String> { self.config.clone() }
+    fn signature(&self) -> Option<String> { self.signature.clone() }
+}
+
+#[derive(Deserialize)]
+struct CommentData {
+    name: Option<String>,
+    body: String,
+}
+
 async fn parents(
     db: &SqlitePool,
     page_id: i64,
@@ -67,7 +102,7 @@ async fn parents(
             query_as::<_, Comment>(
                 r#"
                     SELECT id, parent_id, name, body, avatar, replies_count,
-                    locked_at, created_at, updated_at
+                    locked, created_at, updated_at
                     FROM comments
                     WHERE page_id = ?
                     AND reviewed_at NOT NULL
@@ -87,7 +122,7 @@ async fn parents(
             query_as::<_, Comment>(
                 r#"
                     SELECT id, parent_id, name, body, avatar, replies_count,
-                    locked_at, created_at, updated_at
+                    locked, created_at, updated_at
                     FROM comments
                     WHERE page_id = ?
                     AND reviewed_at NOT NULL
@@ -116,7 +151,7 @@ async fn nested_replies(
         r#"
         SELECT
             id, parent_id, name, body, avatar, replies_count,
-            locked_at,  created_at, updated_at
+            locked,  created_at, updated_at
         FROM (
             SELECT
                 r.id AS id,
@@ -125,7 +160,7 @@ async fn nested_replies(
                 r.body AS body,
                 r.avatar AS avatar,
                 r.replies_count AS replies_count,
-                r.locked_at AS locked_at,
+                r.locked AS locked,
                 r.created_at AS created_at,
                 r.updated_at AS updated_at,
                 row_number() OVER (PARTITION BY c.id ORDER BY datetime(r.created_at), r.id) AS rn
@@ -199,7 +234,7 @@ fn comments_page(
             body: parent.body,
             avatar: parent.avatar,
             replies_count: parent.replies_count,
-            locked_at: parent.locked_at,
+            locked: parent.locked,
             created_at: parent.created_at,
             updated_at: parent.updated_at,
             thread: Thread { replies, cursor },
@@ -226,13 +261,18 @@ fn comments_page(
     }
 }
 
-/// GET /api/comments/www.example.com/blog/hello-world.html
-/// returns a list of comments for a page
+/// POST /api/comments
 async fn comments(
     ctx: Context,
     cursor: Option<Cursor>,
-    ExtractSitePageAndConfig { page, config, .. }: ExtractSitePageAndConfig,
+    moderator: Option<AuthenticatedModerator>,
+    Json(comments_request): Json<CommentsRequest>,
 ) -> Result<Json<CommentsPage>> {
+    let (config, authenticated_user) = comments_request.authenticated_config(&ctx.db).await?;
+
+    if config.private && authenticated_user.is_none() && moderator.is_none() { return Err(Error::Unauthorized) }
+
+    let page = find_by_site_and_path(&ctx.db, &comments_request.site, &comments_request.path).await?;
     match page {
         None => Err(Error::NotFound),
         Some(p) => {
@@ -262,7 +302,7 @@ async fn replies(
             query_as::<_, Comment>(
                 r#"
                      SELECT id, parent_id, name, body, avatar, replies_count,
-                     locked_at, created_at, updated_at
+                     locked, created_at, updated_at
                      FROM comments
                      WHERE parent_id = ?
                      AND reviewed_at NOT NULL
@@ -281,7 +321,7 @@ async fn replies(
             query_as::<_, Comment>(
                r#"
                     SELECT id, parent_id, name, body, avatar, replies_count,
-                    locked_at, created_at, updated_at
+                    locked, created_at, updated_at
                     FROM comments
                     WHERE parent_id = ?
                     AND reviewed_at NOT NULL
@@ -297,21 +337,18 @@ async fn replies(
     Ok(query.fetch_all(db).await?)
 }
 
-/// GET /api/thread/42
-/// returns replies for a comment id and site
+/// POST /api/thread/42
 async fn thread(
     ctx: Context,
     cursor: Option<Cursor>,
+    moderator: Option<AuthenticatedModerator>,
     Path(comment_id): Path<i64>,
+    Json(comments_request): Json<CommentsRequest>,
 ) -> Result<Json<Thread>> {
-    let site = query!(
-        "SELECT p.site as site FROM comments c LEFT JOIN pages p ON c.page_id = p.id WHERE c.id = ?",
-        comment_id,
-    )
-    .fetch_one(&ctx.db)
-    .await?;
+    let (config, authenticated_user) = comments_request.authenticated_config(&ctx.db).await?;
 
-    let config = find_or_default(&ctx.db, &site.site).await?;
+    if config.private && authenticated_user.is_none() && moderator.is_none() { return Err(Error::Unauthorized) }
+
     let all_replies = replies(&ctx.db, comment_id, config.replies_per_comment + 1, cursor).await?;
 
     let replies_len = all_replies.len() as i64;
@@ -342,9 +379,34 @@ async fn thread(
     Ok(Json(Thread { replies, cursor }))
 }
 
+// /// POST /api/comment
 async fn post_comment(
     ctx: Context,
-    ExtractSitePageAndConfig { site, page, config }: ExtractSitePageAndConfig,
+    moderator: Option<AuthenticatedModerator>,
+    Json(comment_request): Json<PostCommentRequest>,
 ) -> Result<Json<Comment>> {
+    let (config, authenticated_user) = comment_request.authenticated_config(&ctx.db).await?;
+
+    let requires_user = config.private || !config.anonymous_comments;
+    let no_user = moderator.is_none() && authenticated_user.is_none();
+
+    if requires_user && no_user { return Err(Error::Unauthorized) }
+
+    let page = create_or_find_by_site_and_path(&ctx.db, &comment_request.site, &comment_request.path).await?;
+    if page.locked { return Err(Error::Forbidden) }
+
+    let mut q = String::from("INSERT INTO comments (page_id");
+    let mut v = String::from(" VALUES (?");
+
+
+    let commenter = get_commenter(&ctx.db, &comment_request.site, authenticated_user, moderator).await?;
+
+    if commenter.is_some() {
+        q.push_str(", user_id");
+        v.push_str(", ?");
+    }
+
+
+
     Err(Error::NotFound)
 }

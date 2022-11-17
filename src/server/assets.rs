@@ -34,8 +34,7 @@ impl<T: Into<String>> IntoResponse for StaticFile<T> {
 
                 let mut response = Response::builder()
                     .header(header::CONTENT_TYPE, mime.as_ref())
-                    .header(header::ETAG, etag)
-                    .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+                    .header(header::ETAG, etag);
 
                 if let Some(last_modified) = metadata.last_modified() {
                     let date = NaiveDateTime::from_timestamp_opt(last_modified as i64, 0).unwrap();

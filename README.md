@@ -23,10 +23,17 @@ the binary executable and run the server with:
 
     $ ./besedka server
 
-On your website(s) put the following snippet where you want the comments to appear:
+On your website(s) include the following script tag:
 
 ```html
 <script type="text/javascript" src="https://your-besedka-server.com/comments.js" defer></script>
+```
+
+where `https://your-besedka-server.com` is the domain pointing to the server which runs Besedka.
+Finally put this div where you want your comments to appear:
+
+```html
+<div id="besedka"></div>
 ```
 
 That's it!
@@ -41,6 +48,10 @@ default config will be created upon running the program for the first time. To s
 You can have different settings per hostname:
 
     $ ./besedka config set --site blog.example.com --theme plain --moderated true
+
+See all available configurations with:
+
+    $ ./besedka config list
 
 Please keep the `secret`s for your sites private and don't display them anywhere. You will be using
 those to sign the configuration object when embedding Besedka on your website. If you accidentally
@@ -73,6 +84,7 @@ type="application/json" id="besedka-config>"` tag:
 {
   "site": "my-other-blog.example.com",
   "page": "/canonical/path/to/this/page.html",
+  "private": true,
   "anonymous_comments": true,
   "moderated": true,
   "comments_per_page": 10,
@@ -80,7 +92,7 @@ type="application/json" id="besedka-config>"` tag:
   "minutes_to_edit": 0,
   "theme": "modern",
   "user": {
-    "id": 42,
+    "id": "42",
     "username": "john@example.com",
     "name": "John Doe",
     "moderator": true,
@@ -90,17 +102,18 @@ type="application/json" id="besedka-config>"` tag:
 </script>
 ```
 
-The configuration object takes the same keys as the command line plus a few additional ones, most
-notably the `user` object.
+The configuration object takes the same underscored keys as the command line plus a few additional
+ones, most notably the `user` object. Here's what these keys mean:
 
 * `site` - Overwrite the site comments on this page will be associated with. This is useful when you
   want to share the same comments between different domains.
 * `path` - Overwrite the page the comments are linked to. Set this to the canonical path in case
   your page contains dynamic parts in the URL, e.g. `/blog/page/2`
 
-If set, the following keys will take precedence over the values configured for the current site and
+If set, the following keys will take precedence over the values configured for the current site or
 the default config:
 
+* `private`
 * `anonymous_comments`
 * `moderated`
 * `comments_per_page`
@@ -110,7 +123,7 @@ the default config:
 
 The `user` object is used to link your existing users to comments. This works is by specifying your
 currently logged in user's `id` in the `user` object. You can optionally pass `username`, `name`,
-`moderator`, and `avatar` keys.
+`moderator`, and `avatar` keys. **Please note** that the `id` must always be passed as a `string`
 
 #### Signing the config
 
@@ -123,28 +136,43 @@ message will be displayed instead of the commenting widget.
 pages, otherwise anyone can sign a configuration object, make themselves a `moderator`, and wipe all
 your comments. Signing the config object **MUST** happen on your back-end.
 
-Ok, now that you have been warned, to get the signature of a config object, you have to use a SHA256
-HMAC and `base64` encode it. Here's how you would do that in Ruby:
+Ok, now that you have been warned, let's sign the config object. First, grab the secret from the
+config:
+
+    $ ./besedka config
+
+You should see the `base64` encoded secret. To get the signature of a config object, you have to
+obtain a SHA256 HMAC digest and then `base64` encode it. Here's how you would do that in Ruby:
 
 ```ruby
+require "openssl"
+require "base64"
+require "json"
+
 config = {
   user: {
-    id: 42,
+    id: "42",
     moderator: true
   }
 }
-base64_secret = "your-besedka-secret"
+
+base64_secret = "BGjrlspsXqte4PMXy87wNE942gLh3pT1f+J55SE2f6U="
+secret_bytes = Base64.strict_decode64(base64_secret)
 digest = OpenSSL::Digest.new('sha256')
-signature = Base64.strict_encode64(OpenSSL::HMAC.digest(digest, base64_secret, config.to_json))
+signature = Base64.strict_encode64(OpenSSL::HMAC.digest(digest, secret_bytes, config.to_json))
+
+puts signature
 ```
 
-Note that Besedka compares the signature against a "non-pretty" `json` object. Signing this:
+Note that Besedka compares the signature against the raw text value inside the
+`<script type="application/json" id="besedka-config"></script>`, so whatever json appears in the
+tag, please ensure you sign the exact same value on your backend. Signing this:
 
 ```json
 {
   "user": {
-    "id": 42,
-    "moderator": true
+    "id": "42",
+    "moderator": true,
   }
 }
 ```
@@ -152,10 +180,8 @@ Note that Besedka compares the signature against a "non-pretty" `json` object. S
 results in a different signature than this:
 
 ```json
-{"user":{"id":42,"moderator":true}}
+{"user":{"id":"42","moderator":true}}
 ```
-
-When signing, please sign the minified version without new lines and unnecessary spaces.
 
 ### Running Besedka as a service
 
