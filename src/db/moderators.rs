@@ -1,7 +1,6 @@
-use anyhow::anyhow;
 use sqlx::{query_as, SqlitePool, FromRow};
 use serde::Serialize;
-use crate::cli::ModeratorsAddCommandArgs;
+use crate::{cli::ModeratorsAddCommandArgs, api::Result};
 use argon2::{
     password_hash::{
         rand_core::OsRng,
@@ -51,10 +50,24 @@ pub async fn insert_moderator(db: &SqlitePool, moderator: ModeratorsAddCommandAr
     )
 }
 
-pub async fn find_by_sid(db: &SqlitePool, sid: &str) -> sqlx::Result<Option<Moderator>> {
+pub async fn find_by_sid(db: &SqlitePool, sid: &str) -> Result<Moderator> {
     Ok(
         query_as!(Moderator, "SELECT * FROM moderators WHERE sid = ? LIMIT 1", sid)
-            .fetch_optional(db)
+            .fetch_one(db)
             .await?
     )
+}
+
+pub async fn find_by_name(db: &SqlitePool, name: &str) -> Result<Moderator> {
+    Ok(
+        query_as!(Moderator, "SELECT * FROM moderators WHERE name = ? LIMIT 1", name)
+            .fetch_one(db)
+            .await?
+    )
+}
+
+pub async fn delete(db: &SqlitePool, name: &str) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
+    query!("DELETE FROM moderators WHERE name = ?", name)
+        .execute(db)
+        .await
 }

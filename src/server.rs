@@ -17,18 +17,18 @@ use tower_http::{
 };
 
 use crate::api;
-use super::cli::Server;
+use super::cli::ServerArgs;
 
 use axum_server::tls_rustls::RustlsConfig;
 
-impl Server {
+impl ServerArgs {
     pub fn ssl(&self) -> bool {
         self.ssl_key.is_some() && self.ssl_cert.is_some()
     }
 }
 
 /// Runs the server, blocking the main thread
-pub async fn run(config: Server, db: SqlitePool) -> anyhow::Result<()> {
+pub async fn run(config: ServerArgs, db: SqlitePool) -> anyhow::Result<()> {
     tracing::debug!("{:#?}", config);
     tracing::info!("Listening on {}", config.bind);
 

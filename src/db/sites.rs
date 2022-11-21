@@ -1,11 +1,10 @@
-use anyhow::bail;
 use sqlx::{SqlitePool, FromRow, query_as, query};
 use serde::Serialize;
 
-use crate::cli::ConfigSetCommandArgs;
+use crate::cli::SitesCommandArgs;
 
 #[derive(FromRow, Debug, Serialize)]
-pub struct Config {
+pub struct Site {
     pub site: String,
     pub secret: Vec<u8>,
     pub private: bool,
@@ -17,46 +16,36 @@ pub struct Config {
     pub theme: String,
 }
 
-impl Config {
+impl Site {
     pub fn secret(&self) -> String {
         base64::encode(&self.secret)
     }
 }
 
-pub async fn all(db: &SqlitePool) -> anyhow::Result<Vec<Config>> {
-    let configs = query_as!(Config, "SELECT * FROM configs")
+pub async fn all(db: &SqlitePool) -> anyhow::Result<Vec<Site>> {
+    let sites = query_as!(Site, "SELECT * FROM sites")
         .fetch_all(db)
         .await?;
-    Ok(configs)
+    Ok(sites)
 }
 
 /// Finds a config for a given site
-pub async fn find(db: &SqlitePool, site: &str) -> anyhow::Result<Option<Config>> {
-    let config = query_as!(Config, "SELECT * FROM configs WHERE site = ?", site)
+pub async fn find(db: &SqlitePool, site: &str) -> sqlx::Result<Option<Site>> {
+    let site = query_as!(Site, "SELECT * FROM sites WHERE site = ?", site)
         .fetch_optional(db).await?;
-    Ok(config)
+    Ok(site)
 }
 
 /// Deletes a config for a site
 pub async fn delete(db: &SqlitePool, site: &str) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
-    query!("DELETE FROM configs WHERE site = ?", site)
+    query!("DELETE FROM sites WHERE site = ?", site)
         .execute(db)
         .await
 }
 
-/// Finds a config for a requested site.
-/// If it doesn't exist, it returns the default config.
-/// Returns an error if the default config is missing
-pub async fn find_or_default(db: &SqlitePool, site: &str) -> anyhow::Result<Config> {
-    let config = find(db, site).await?;
-    if let Some(config) = config { return Ok(config) }
-    if let Some(default) = find(db, "default").await? { return Ok(default) }
-    bail!("Default config not found")
-}
-
 /// Creates a new configration for a site from
 /// command line arguments and returns the result
-pub async fn insert(db: &SqlitePool, args: ConfigSetCommandArgs) -> anyhow::Result<Config> {
+pub async fn insert(db: &SqlitePool, args: SitesCommandArgs) -> sqlx::Result<Site> {
     fn append<T>(value: &Option<T>, attribute: &str, query: &mut String, values: &mut String) {
         if let Some(_) = value {
             query.push_str(&format!(", {}", attribute));
@@ -64,7 +53,7 @@ pub async fn insert(db: &SqlitePool, args: ConfigSetCommandArgs) -> anyhow::Resu
         }
     }
 
-    let mut insert = String::from("INSERT INTO configs (site");
+    let mut insert = String::from("INSERT INTO sites (site");
     let mut values = String::from("VALUES (?");
 
     append(&args.private, "private", &mut insert, &mut values);
@@ -100,20 +89,22 @@ pub async fn insert(db: &SqlitePool, args: ConfigSetCommandArgs) -> anyhow::Resu
 
 /// Updates a configuration for a given site from
 /// command line arguments and returns the updated row
-pub async fn update(db: &SqlitePool, existing: Config, args: ConfigSetCommandArgs) -> anyhow::Result<Config> {
-    let mut update = String::from("UPDATE configs SET");
+pub async fn update(db: &SqlitePool, existing: Site, args: SitesCommandArgs) -> anyhow::Result<Site> {
+    let mut update = String::from("UPDATE sites SET site = ?");
 
-    if let Some(_) = args.private { update.push_str(" private = ?") };
-    if let Some(_) = args.anonymous { update.push_str(" anonymous = ?") };
-    if let Some(_) = args.moderated { update.push_str(" moderated = ?") };
-    if let Some(_) = args.comments_per_page { update.push_str(" comments_per_page = ?") };
-    if let Some(_) = args.replies_per_comment { update.push_str(" replies_per_comment = ?") };
-    if let Some(_) = args.minutes_to_edit { update.push_str(" minutes_to_edit = ?") };
-    if let Some(_) = args.theme { update.push_str(" theme = ?") };
+    if let Some(_) = args.private { update.push_str(", private = ?") };
+    if let Some(_) = args.anonymous { update.push_str(", anonymous = ?") };
+    if let Some(_) = args.moderated { update.push_str(", moderated = ?") };
+    if let Some(_) = args.comments_per_page { update.push_str(", comments_per_page = ?") };
+    if let Some(_) = args.replies_per_comment { update.push_str(", replies_per_comment = ?") };
+    if let Some(_) = args.minutes_to_edit { update.push_str(", minutes_to_edit = ?") };
+    if let Some(_) = args.theme { update.push_str(", theme = ?") };
 
     update.push_str(" WHERE site = ?");
 
     let mut result = query(&update);
+
+    result = result.bind(&args.site);
 
     if let Some(a) = args.private { result = result.bind(a) }
     if let Some(a) = args.anonymous { result = result.bind(a) }

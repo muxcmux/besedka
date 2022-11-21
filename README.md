@@ -18,10 +18,15 @@ distributed as a single executable binary, which you can download and run on you
 
 ### ⚡️ Quickstart
 
-Download and extract the latest build from the releases page on GitHub for your architecture. Make
-the binary executable and run the server with:
+Download and extract the latest build from the releases page on GitHub for your architecture and
+make sure the binary is executable. Next, add your site (use `besedka sites add -h` to see all
+available options):
 
-    $ ./besedka server
+    $ besedka sites add my.blog.com --private false --anonymous true
+
+Run the server:
+
+    $ besedka server
 
 On your website(s) include the following script tag:
 
@@ -38,27 +43,19 @@ Finally put this div where you want your comments to appear:
 
 That's it!
 
-### Configuration
+### Multiple site configuration
 
-Besedka comes with a restrictive default configuration. To create a new configuration for your site,
-use the `config` command:
+Besedka requires that you have explicitly added a `site` config, otherwise it will not load any
+comments or allow posting of comments. To manage your sites, use the `sites` command:
 
-    $ besedka config set blog.mysite.com
-
-See all available options with:
-
-    $ besedka config set --help
-
-See all available configurations with:
-
-    $ besedka config list
+    $ besedka sites --help
 
 Please keep the `secret`s for your sites private and don't display them anywhere. You will be using
 those to sign the user object when embedding Besedka on your website. If you accidentally leak a
 secret to your front-end, then anyone can send whatever user info they want and cause mayhem! If
 this happens, you need to immediately delete the affected config:
 
-    $ besedka config remove blog.mysite.com
+    $ besedka sites remove blog.mysite.com
 
 ### Adding moderators
 
@@ -66,14 +63,10 @@ A moderator can either be set with a signed user object, or one can be added fro
 
     $ besedka moderators add --name "Brian Kernighan" --password l3g3nd4ry_h4x0r
 
-Note that logging in from the comment widget UI is only available for moderators created from the
-CLI. Moderators linked via a user object will not be able to login via the widget UI as Besedka
-doesn't store any passwords for your users.
-
 ### Overriding the site config and the page for which comments are loaded
 
-By default comments will be displayed and posted for the current hostname and page on your site. You
-can explicitly set these to different values by providing them in the following `<script>` tag:
+By default the comment widget will request the config assiciated with the current hostname. You can
+explicitly require a different site and page by providing a config `<script>` tag:
 
 ```html
 <script type="application/json" id="besedka-config">
@@ -84,8 +77,8 @@ can explicitly set these to different values by providing them in the following 
 </script>
 ```
 
-* `site` - This is useful when you want to load a different configuration or to share the same
-  comments between different domains.
+* `site` - This is useful when you want to load a configuration for a different site or to share the
+  same comments between different domains.
 * `path` - Overwrite the page to which comments are linked. Set this to the canonical path in case
   your page contains dynamic parts in the URL, e.g. `/blog/page/2`
 

@@ -1,5 +1,4 @@
-// use besedka::{cli, server};
-use besedka::cli;
+use besedka::{cli, server};
 use sqlx::{migrate, SqlitePool};
 
 use tracing_subscriber::prelude::*;
@@ -22,18 +21,18 @@ async fn main() -> anyhow::Result<()> {
         .expect("Couldn't migrate database");
 
     match args.command {
-        // cli::Commands::Server(config) => server::run(config, db).await?,
-        cli::Commands::Server(config) => println!("bout to run server"),
-        cli::Commands::Config(config) => match config {
-            cli::ConfigCommands::List  => cli::config::list(&db).await,
-            cli::ConfigCommands::Get { site } => cli::config::print(&db, &site).await,
-            cli::ConfigCommands::Set(args) => cli::config::create_or_update(&db, args).await,
-            cli::ConfigCommands::Remove { site } => cli::config::delete(&db, &site).await,
+        cli::Commands::Server(config) => server::run(config, db).await?,
+        cli::Commands::Sites(config) => match config {
+            cli::SitesCommands::List  => cli::sites::list(&db).await,
+            cli::SitesCommands::Get { site } => cli::sites::print(&db, &site).await,
+            cli::SitesCommands::Add(args) => cli::sites::create(&db, args).await,
+            cli::SitesCommands::Update(args) => cli::sites::update(&db, args).await,
+            cli::SitesCommands::Remove { site } => cli::sites::delete(&db, &site).await,
         },
         cli::Commands::Moderators(moderators) => match moderators {
             cli::ModeratorsCommands::Add(args) => cli::moderators::create(&db, args).await,
             cli::ModeratorsCommands::List => cli::moderators::list(&db).await,
-            cli::ModeratorsCommands::Remove { name } => todo!(),
+            cli::ModeratorsCommands::Remove { name } => cli::moderators::remove(&db, &name).await,
         },
     };
 

@@ -1,4 +1,4 @@
-pub mod config;
+pub mod sites;
 pub mod moderators;
 
 use clap::{Parser, Subcommand, Args};
@@ -28,10 +28,13 @@ impl Cli {
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum Commands {
+    #[command(aliases(["s", "run"]))]
     Server(ServerArgs),
     #[command(subcommand)]
-    Config(ConfigCommands),
+    #[command(alias("site"))]
+    Sites(SitesCommands),
     #[command(subcommand)]
+    #[command(alias("moderator"))]
     Moderators(ModeratorsCommands),
 }
 
@@ -53,20 +56,26 @@ pub struct ServerArgs {
 
 #[derive(Debug, Clone, Subcommand)]
 /// View or edit site configuration
-pub enum ConfigCommands {
+pub enum SitesCommands {
     /// View all available configurations
     List,
     /// Display a site config
+    #[command(alias("show"))]
     Get { site: String },
-    /// Delete a site configuration
+    /// Delete a site configuration.
+    /// This will NOT remove comments or pages
+    /// assiciated to the site
     #[command(alias("delete"))]
     Remove { site: String },
-    Set(ConfigSetCommandArgs),
+    #[command(alias("create"))]
+    Add(SitesCommandArgs),
+    #[command(alias("edit"))]
+    Update(SitesCommandArgs),
 }
 
 #[derive(Debug, Clone, Args)]
 /// Update a site config (creates if missing)
-pub struct ConfigSetCommandArgs {
+pub struct SitesCommandArgs {
     pub site: String,
 
     #[arg(long)]
@@ -106,6 +115,7 @@ pub struct ConfigSetCommandArgs {
 pub enum ModeratorsCommands {
     /// List all moderators
     List,
+    #[command(alias("create"))]
     Add(ModeratorsAddCommandArgs),
     /// Remove a moderator
     #[command(alias("delete"))]

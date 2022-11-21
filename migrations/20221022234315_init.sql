@@ -1,4 +1,4 @@
-CREATE TABLE configs (
+CREATE TABLE sites (
   site                 VARCHAR NOT NULL UNIQUE,
   secret               BLOB NOT NULL UNIQUE DEFAULT (randomblob(32)),
   private              BOOLEAN NOT NULL DEFAULT 1,
@@ -10,13 +10,11 @@ CREATE TABLE configs (
   theme                VARCHAR NOT NULL DEFAULT day_and_night
 );
 
-CREATE TRIGGER cleanup_config_site AFTER INSERT ON configs
+CREATE TRIGGER cleanup_sites_site AFTER INSERT ON sites
 BEGIN
-  UPDATE configs SET site = replace(replace(new.site, 'http://', ''), 'https://', '')
+  UPDATE sites SET site = replace(replace(new.site, 'http://', ''), 'https://', '')
   WHERE rowid = new.rowid;
 END;
-
-INSERT INTO configs (site) VALUES('default');
 
 CREATE TABLE moderators (
   name           VARCHAR NOT NULL UNIQUE,

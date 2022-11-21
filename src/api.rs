@@ -17,7 +17,7 @@ pub type Context = Extension<Arc<AppContext>>;
 
 pub use error::{Error, ResultExt};
 
-use crate::db::{configs::{find_or_default, Config}, moderators::{Moderator, find_by_sid}, pages::{find_by_site_and_path, Page}};
+use crate::db::{sites::{find, Site}, moderators::{Moderator, find_by_sid}};
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -39,6 +39,30 @@ pub struct ForeignUser {
     pub avatar: Option<String>
 }
 
+struct Commenter {
+    name: String,
+    avatar: Option<String>,
+    moderator: bool,
+}
+
+impl Commenter {
+    fn from_moderator(moderator: Moderator) -> Self {
+        Self {
+            name: moderator.name,
+            avatar: moderator.avatar,
+            moderator: true,
+        }
+    }
+
+    fn from_foreigh_user(user: ForeignUser) -> Self {
+        Self {
+            name: user.name,
+            avatar: user.avatar,
+            moderator: false,
+        }
+    }
+}
+
 #[derive(Deserialize)]
 struct ApiRequest<T> {
     site: String,
@@ -53,7 +77,7 @@ impl<T> ApiRequest<T> {
     /// Returns the config for the requested site
     /// and an authorised user, either a moderator
     /// by a sid, or a signed 3rd party user
-    async fn extract(&self, db: &SqlitePool) -> Result<(Config, Option<User>)> {
+    async fn extract(&self, db: &SqlitePool) -> Result<(Site, Option<Commenter>)> {
         fn deserialize(json: &Vec<u8>) -> Result<ForeignUser> {
             let requested: ForeignUser = serde_json::from_slice(json)?;
             Ok(requested)
@@ -73,12 +97,17 @@ impl<T> ApiRequest<T> {
             Ok(())
         }
 
-        let config = find_or_default(db, &self.site).await?;
+        // Fail if there's no config for the requested site
+        let site = match find(db, &self.site).await? {
+            None => return Err(Error::BadRequest("No configuration found for requested site")),
+            Some(s) => s,
+        };
 
         // logged in moderators always take precedence over 3rd party users
         if let Some(ref sid) = self.sid {
-            if let Some(moderator) = find_moderator_by_sid(db, sid).await? {
-                return Ok((config, Some(moderator)));
+            match find_by_sid(db, sid).await {
+                Err(_) => return Err(Error::Unauthorized),
+                Ok(moderator) => return Ok((site, Some(Commenter::from_moderator(moderator)))),
             }
         }
 
@@ -94,14 +123,14 @@ impl<T> ApiRequest<T> {
 
                     // failed verification vs the signature will
                     // return an error early
-                    let _ = validate(&json, s, &config.secret)?;
+                    let _ = validate(&json, s, &site.secret)?;
 
                     // ok the signature is good
-                    Some(create_or_find_foreign_user(db, &self.site, &deserialized_user).await?)
+                    Some(Commenter::from_foreigh_user(deserialized_user))
                 }
             }
         };
 
-        Ok((config, user))
+        Ok((site, user))
     }
 }

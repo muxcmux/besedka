@@ -1,6 +1,6 @@
 use crate::{
     api::{Context, Result},
-    db::{configs::Config, pages::{find_by_site_and_path, create_or_find_by_site_and_path}},
+    db::{sites::Site, pages::{find_by_site_and_path, create_or_find_by_site_and_path}},
 };
 use axum::{extract::Path, routing::post, Json, Router};
 use chrono::{DateTime, Utc};
@@ -156,14 +156,14 @@ fn comments_page(
     parents: Vec<Comment>,
     all_replies: Vec<Comment>,
     total: i64,
-    config: Config,
+    site: Site,
 ) -> CommentsPage {
     let parents_len = parents.len() as i64;
     let mut comments = vec![];
     let mut count = 0_i64;
 
     for parent in parents {
-        if count == config.comments_per_page {
+        if count == site.comments_per_page {
             break;
         }
 
@@ -179,14 +179,14 @@ fn comments_page(
 
         let mut reply_count = 0_i64;
         for reply in comment_replies {
-            if reply_count == config.replies_per_comment {
+            if reply_count == site.replies_per_comment {
                 break;
             }
             replies.push(reply);
             reply_count += 1;
         }
 
-        let cursor = if config.replies_per_comment < replies_len {
+        let cursor = if site.replies_per_comment < replies_len {
             Some(
                 Cursor {
                     id: replies.last().unwrap().id,
@@ -213,7 +213,7 @@ fn comments_page(
         count += 1;
     }
 
-    let cursor = if config.comments_per_page < parents_len {
+    let cursor = if site.comments_per_page < parents_len {
         Some(
             Cursor {
                 id: comments.last().unwrap().id,
@@ -238,22 +238,22 @@ async fn comments(
     cursor: Option<Cursor>,
     Json(req): Json<ApiRequest<()>>,
 ) -> Result<Json<CommentsPage>> {
-    let (config, user) = req.extract(&ctx.db).await?;
+    let (site, commenter) = req.extract(&ctx.db).await?;
 
-    if config.private && user.is_none() { return Err(Error::Unauthorized) }
+    if site.private && commenter.is_none() { return Err(Error::Unauthorized) }
 
     let page = find_by_site_and_path(&ctx.db, &req.site, &req.path).await?;
 
     // We need the fetch limit + 1 in order
     // to work out if there is a next page or not
-    let parents = parents(&ctx.db, page.id, config.comments_per_page + 1, cursor).await?;
-    let replies = nested_replies(&ctx.db, config.replies_per_comment + 1, &parents).await?;
+    let parents = parents(&ctx.db, page.id, site.comments_per_page + 1, cursor).await?;
+    let replies = nested_replies(&ctx.db, site.replies_per_comment + 1, &parents).await?;
 
     Ok(Json(comments_page(
         parents,
         replies,
         page.comments_count,
-        config,
+        site,
     )))
 }
 
@@ -310,18 +310,18 @@ async fn thread(
     Path(comment_id): Path<i64>,
     Json(req): Json<ApiRequest<()>>,
 ) -> Result<Json<Thread>> {
-    let (config, user) = req.extract(&ctx.db).await?;
+    let (site, commenter) = req.extract(&ctx.db).await?;
 
-    if config.private && user.is_none() { return Err(Error::Unauthorized) }
+    if site.private && commenter.is_none() { return Err(Error::Unauthorized) }
 
-    let all_replies = replies(&ctx.db, comment_id, config.replies_per_comment + 1, cursor).await?;
+    let all_replies = replies(&ctx.db, comment_id, site.replies_per_comment + 1, cursor).await?;
 
     let replies_len = all_replies.len() as i64;
     let mut replies = vec![];
     let mut count = 0_i64;
 
     for reply in all_replies {
-        if count == config.replies_per_comment {
+        if count == site.replies_per_comment {
             break;
         }
 
@@ -329,7 +329,7 @@ async fn thread(
         count += 1;
     }
 
-    let cursor = if config.replies_per_comment < replies_len {
+    let cursor = if site.replies_per_comment < replies_len {
         Some(
             Cursor {
                 id: replies.last().unwrap().id,
@@ -344,7 +344,7 @@ async fn thread(
     Ok(Json(Thread { replies, cursor }))
 }
 
-// /// POST /api/comment
+/// POST /api/comment
 async fn post_comment(
     ctx: Context,
     Json(req): Json<ApiRequest<CommentData>>,
@@ -354,32 +354,50 @@ async fn post_comment(
         Some(ref data) => {
             if data.body.len() < 1 { return Err(Error::unprocessable_entity([("body", "can't be blank")])) }
 
-            let (config, user) = req.extract(&ctx.db).await?;
+            let (site, commenter) = req.extract(&ctx.db).await?;
 
-            let requires_user = config.private || !config.anonymous;
+            let requires_user = site.private || !site.anonymous;
 
-            if requires_user && user.is_none() { return Err(Error::Unauthorized) }
+            if requires_user && commenter.is_none() { return Err(Error::Unauthorized) }
 
             let page = create_or_find_by_site_and_path(&ctx.db, &req.site, &req.path).await?;
 
             if page.locked { return Err(Error::Forbidden) }
 
-            let mut q = String::from("INSERT INTO comments (page_id, body");
-            let mut v = String::from(" VALUES (?, ?");
+            let mut q = String::from("INSERT INTO comments (page_id, name, body, avatar");
+            let mut v = String::from(" VALUES (?, ?, ?, ?");
 
-            if let Some(ref u) = user {
-                q.push_str(", user_id, name");
-                v.push_str(", ?, ?");
-                if let Some(ref a) = u.avatar {
-                    q.push_str(", avatar");
-                    v.push_str(", ?");
-                }
-            } else if data.name.is_some() {
-                q.push_str(", name");
-                v.push_str(", ?")
+            if !site.moderated {
+                q.push_str(", reviewed_at");
+                v.push_str(", ?");
             }
 
-            Err(Error::NotFound)
+            let anon = String::from("Anonymous");
+            let (name, avatar) = commenter.as_ref().map_or(
+                (data.name.as_ref().unwrap_or(&anon), None),
+                |c| (&c.name, c.avatar.as_ref())
+            );
+
+            v.push_str(")");
+            q.push_str(")");
+            q.push_str(&v);
+            q.push_str(" RETURNING *");
+
+            let mut insert = query_as::<_, Comment>(&q)
+                .bind(&page.id)
+                .bind(name)
+                .bind(&data.body)
+                .bind(avatar);
+
+            if !site.moderated { insert = insert.bind(Utc::now()) }
+
+            let mut tx = ctx.db.begin().await?;
+
+            let comment = insert.fetch_one(&mut tx).await?;
+
+            tx.commit().await?;
+
+            Ok(Json(comment))
         }
     }
 }
