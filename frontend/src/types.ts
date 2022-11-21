@@ -26,7 +26,7 @@ export interface Config {
   site: string,
   path: string,
   private?: boolean,
-  anonymous_comments?: boolean,
+  anonymous?: boolean,
   moderated?: boolean,
   comments_per_page?: number,
   replies_per_comment?: number,

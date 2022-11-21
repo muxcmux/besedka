@@ -3,7 +3,7 @@ pub mod comments;
 pub mod extractors;
 use std::sync::Arc;
 
-use axum::{Extension, async_trait};
+use axum::Extension;
 use chrono::{DateTime, Utc};
 use ring::hmac;
 use serde::{Serialize, Deserialize};
@@ -17,17 +17,8 @@ pub type Context = Extension<Arc<AppContext>>;
 
 pub use error::{Error, ResultExt};
 
-use crate::db::configs::{find_or_default, Config};
+use crate::db::{configs::{find_or_default, Config}, moderators::{Moderator, find_by_sid}, pages::{find_by_site_and_path, Page}};
 pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-#[derive(Debug, Serialize)]
-pub struct Page {
-    pub id: i64,
-    pub site: String,
-    pub path: String,
-    pub comments_count: i64,
-    pub locked_at: bool,
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Cursor {
@@ -42,37 +33,29 @@ impl Cursor {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-struct RequestedConfig {
-    site: Option<String>,
-    path: Option<String>,
-    private: Option<bool>,
-    anonymous_comments: Option<bool>,
-    moderated: Option<bool>,
-    comments_per_page: Option<i64>,
-    replies_per_comment: Option<i64>,
-    minutes_to_edit: Option<i64>,
-    theme: Option<String>,
-    user: Option<RequestedUserConfig>,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct RequestedUserConfig {
-    pub id: String,
-    pub username: Option<String>,
-    pub name: Option<String>,
+pub struct ForeignUser {
+    pub name: String,
     pub moderator: Option<bool>,
     pub avatar: Option<String>
 }
 
-#[async_trait]
-trait AuthenticatedConfig {
-    fn site(&self) -> String;
-    fn json(&self) -> Option<String>;
-    fn signature(&self) -> Option<String>;
+#[derive(Deserialize)]
+struct ApiRequest<T> {
+    site: String,
+    path: String,
+    user: Option<String>,
+    signature: Option<String>,
+    sid: Option<String>,
+    payload: Option<T>
+}
 
-    async fn authenticated_config(&self, db: &SqlitePool,) -> Result<(Config, Option<RequestedUserConfig>)> {
-        fn deserialize(json: &Vec<u8>) -> Result<RequestedConfig> {
-            let requested: RequestedConfig = serde_json::from_slice(json)?;
+impl<T> ApiRequest<T> {
+    /// Returns the config for the requested site
+    /// and an authorised user, either a moderator
+    /// by a sid, or a signed 3rd party user
+    async fn extract(&self, db: &SqlitePool) -> Result<(Config, Option<User>)> {
+        fn deserialize(json: &Vec<u8>) -> Result<ForeignUser> {
+            let requested: ForeignUser = serde_json::from_slice(json)?;
             Ok(requested)
         }
 
@@ -86,40 +69,39 @@ trait AuthenticatedConfig {
                 .map_err(|_| Error::BadRequest("Can't base64 decode signature"))?;
             let key = hmac::Key::new(hmac::HMAC_SHA256, &secret);
             hmac::verify(&key, json, &decoded)
-                .map_err(|_| Error::BadRequest("Cannot verify config object"))?;
+                .map_err(|_| Error::BadRequest("Cannot verify user object"))?;
             Ok(())
         }
 
-        match self.json() {
-            None => Ok((find_or_default(db, &self.site()).await?, None)),
-            Some(base64_encoded_json) => {
-                match self.signature() {
-                    None => Err(Error::BadRequest("Missing signature")),
-                    Some(s) => {
-                        let json = base64::decode(&base64_encoded_json)
-                            .map_err(|_| Error::BadRequest("Can't base64 decode config object"))?;
+        let config = find_or_default(db, &self.site).await?;
 
-                        let deserialized = deserialize(&json)?;
-
-                        let site = deserialized.site.unwrap_or(self.site());
-                        let config = find_or_default(db, &site).await?;
-
-                        let _ = validate(&json, &s, &config.secret)?;
-
-                        Ok((Config {
-                            private:             deserialized.private.unwrap_or(config.private),
-                            anonymous_comments:  deserialized.anonymous_comments.unwrap_or(config.anonymous_comments),
-                            moderated:           deserialized.moderated.unwrap_or(config.moderated),
-                            comments_per_page:   deserialized.comments_per_page.unwrap_or(config.comments_per_page),
-                            replies_per_comment: deserialized.replies_per_comment.unwrap_or(config.replies_per_comment),
-                            minutes_to_edit:     deserialized.minutes_to_edit.unwrap_or(config.minutes_to_edit),
-                            theme:               deserialized.theme.clone().unwrap_or(config.theme),
-                            secret:              config.secret,
-                            site:                config.site,
-                        }, deserialized.user))
-                    }
-                }
+        // logged in moderators always take precedence over 3rd party users
+        if let Some(ref sid) = self.sid {
+            if let Some(moderator) = find_moderator_by_sid(db, sid).await? {
+                return Ok((config, Some(moderator)));
             }
         }
+
+        let user = match &self.user {
+            None => None,
+            Some(base64_encoded_json) => match &self.signature {
+                None => None,
+                Some(s) => {
+                    let json = base64::decode(&base64_encoded_json)
+                        .map_err(|_| Error::BadRequest("Can't base64 decode user object"))?;
+
+                    let deserialized_user = deserialize(&json)?;
+
+                    // failed verification vs the signature will
+                    // return an error early
+                    let _ = validate(&json, s, &config.secret)?;
+
+                    // ok the signature is good
+                    Some(create_or_find_foreign_user(db, &self.site, &deserialized_user).await?)
+                }
+            }
+        };
+
+        Ok((config, user))
     }
 }

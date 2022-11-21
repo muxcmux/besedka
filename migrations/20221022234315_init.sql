@@ -1,9 +1,9 @@
 CREATE TABLE configs (
   site                 VARCHAR NOT NULL UNIQUE,
   secret               BLOB NOT NULL UNIQUE DEFAULT (randomblob(32)),
-  private              BOOLEAN NOT NULL DEFAULT 0,
-  anonymous_comments   BOOLEAN NOT NULL DEFAULT 1,
-  moderated            BOOLEAN NOT NULL DEFAULT 0,
+  private              BOOLEAN NOT NULL DEFAULT 1,
+  anonymous            BOOLEAN NOT NULL DEFAULT 0,
+  moderated            BOOLEAN NOT NULL DEFAULT 1,
   comments_per_page    INTEGER NOT NULL DEFAULT 25,
   replies_per_comment  INTEGER NOT NULL DEFAULT 5,
   minutes_to_edit      INTEGER NOT NULL DEFAULT 3,
@@ -18,28 +18,13 @@ END;
 
 INSERT INTO configs (site) VALUES('default');
 
-CREATE TABLE users (
-  id             INTEGER NOT NULL PRIMARY KEY,
-  site           VARCHAR NOT NULL,
-  username       VARCHAR NOT NULL DEFAULT (hex(randomblob(32))),
-  name           VARCHAR NOT NULL DEFAULT Anonymous,
-  password       VARCHAR,
-  password_salt  VARCHAR,
-  moderator      BOOLEAN NOT NULL DEFAULT 0,
-  third_party_id VARCHAR,
+CREATE TABLE moderators (
+  name           VARCHAR NOT NULL UNIQUE,
+  password       VARCHAR NOT NULL,
+  password_salt  VARCHAR NOT NULL,
   avatar         TEXT,
-  sid            VARCHAR,
-  UNIQUE(site, username),
-  UNIQUE(sid)
+  sid            BLOB UNIQUE
 );
-
-CREATE TRIGGER cleanup_users_site AFTER INSERT ON users
-BEGIN
-  UPDATE users SET site = replace(replace(new.site, 'http://', ''), 'https://', '')
-  WHERE id = new.id;
-END;
-
-CREATE INDEX idx_users_third_party_id ON users(third_party_id);
 
 CREATE TABLE pages (
   id             INTEGER NOT NULL PRIMARY KEY,
@@ -60,7 +45,6 @@ CREATE TABLE comments (
   id            INTEGER NOT NULL PRIMARY KEY,
   page_id       INTEGER NOT NULL REFERENCES pages(id) ON UPDATE CASCADE ON DELETE CASCADE,
   parent_id     INTEGER REFERENCES comments(id) ON UPDATE CASCADE ON DELETE CASCADE,
-  user_id       INTEGER REFERENCES users(id) ON UPDATE CASCADE ON DELETE SET NULL,
   name          VARCHAR NOT NULL DEFAULT Anonymous,
   body          VARCHAR NOT NULL,
   avatar        TEXT,
@@ -68,7 +52,8 @@ CREATE TABLE comments (
   locked        BOOLEAN NOT NULL DEFAULT 0,
   reviewed_at   DATETIME,
   created_at    DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  updated_at    DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+  updated_at    DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  sid           BLOB NOT NULL DEFAULT (randomblob(256))
 );
 
 CREATE INDEX idx_comments_path      ON comments(page_id);

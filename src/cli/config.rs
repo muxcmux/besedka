@@ -1,11 +1,11 @@
-use crate::db::configs::{find, insert, update, Config};
-use sqlx::{query_as, SqlitePool};
+use crate::db::configs::{find, insert, update, Config, all, self};
+use sqlx::SqlitePool;
 
-pub async fn print(db: &SqlitePool, site: String) {
+pub async fn print(db: &SqlitePool, site: &str) {
     match find(db, &site).await {
         Err(e) => println!("{}", e),
         Ok(cfg) => match cfg {
-            None => println!("Couldn't find {} configuration", site),
+            None => println!("No config found for {}. Try adding it with:\n$ besedka config set {}", site, site),
             Some(c) => print_config(&c),
         },
     }
@@ -23,23 +23,28 @@ pub async fn list(db: &SqlitePool) {
     }
 }
 
-pub async fn create_or_update(db: &SqlitePool, args: super::ConfigSetCommand) {
+pub async fn delete(db: &SqlitePool, site: &str) {
+    match find(db, &site).await {
+        Err(e) => println!("{}", e),
+        Ok(cfg) => match cfg {
+            None => println!("No config found for {}", site),
+            Some(_) => {
+                match configs::delete(db, site).await {
+                    Err(e) => println!("{}", e),
+                    Ok(_) => println!("Deleted config for {}", site),
+                }
+            }
+        },
+    }
+}
+
+pub async fn create_or_update(db: &SqlitePool, args: super::ConfigSetCommandArgs) {
     let config = match find(db, &args.site).await.unwrap() {
         None => insert(db, args).await.unwrap(),
         Some(existing) => update(db, existing, args).await.unwrap()
     };
     println!("Success!");
     print_config(&config);
-}
-
-pub async fn reset_secret(db: &SqlitePool, site: String) {
-    match find(db, &site).await.unwrap() {
-        None => println!("Couldn't find {} configuration", site),
-        Some(_) => {
-            println!("Success!");
-            print_config(&regenerate_secret(db, &site).await.unwrap())
-        }
-    }
 }
 
 fn print_config(cfg: &Config) {
@@ -49,7 +54,7 @@ fn print_config(cfg: &Config) {
 {}
 secret:              {}
 private:             {}
-anonymous_comments:  {}
+anonymous:           {}
 moderated:           {}
 comments_per_page:   {}
 replies_per_comment: {}
@@ -60,33 +65,11 @@ theme:               {}
         "-".repeat(cfg.site.len()),
         cfg.secret(),
         cfg.private,
-        cfg.anonymous_comments,
+        cfg.anonymous,
         cfg.moderated,
         cfg.comments_per_page,
         cfg.replies_per_comment,
         cfg.minutes_to_edit,
         cfg.theme
     );
-}
-
-async fn all(db: &SqlitePool) -> anyhow::Result<Vec<Config>> {
-    let configs = query_as!(Config, "SELECT * FROM configs")
-        .fetch_all(db)
-        .await?;
-    Ok(configs)
-}
-
-async fn regenerate_secret(db: &SqlitePool, site: &str) -> anyhow::Result<Config> {
-    let config = query_as!(
-        Config,
-        r#"
-        UPDATE configs SET secret = (randomblob(32)) WHERE(site = ?);
-        SELECT * FROM configs WHERE(site = ?);
-    "#,
-        site,
-        site
-    )
-    .fetch_one(db)
-    .await?;
-    Ok(config)
 }

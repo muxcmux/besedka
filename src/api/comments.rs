@@ -1,13 +1,13 @@
 use crate::{
     api::{Context, Result},
-    db::{configs::Config, pages::{find_by_site_and_path, create_or_find_by_site_and_path}, users::get_commenter},
+    db::{configs::Config, pages::{find_by_site_and_path, create_or_find_by_site_and_path}},
 };
 use axum::{extract::Path, routing::post, Json, Router};
 use chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
 use sqlx::{query_as, FromRow, SqlitePool};
 
-use super::{Cursor, Error,  AuthenticatedConfig, extractors::AuthenticatedModerator};
+use super::{Cursor, Error, ApiRequest};
 
 pub fn router() -> Router {
     Router::new()
@@ -54,35 +54,6 @@ struct CommentsPage {
     total: i64,
     cursor: Option<String>,
     comments: Vec<CommentWithReplies>,
-}
-
-#[derive(Deserialize, Debug)]
-struct CommentsRequest {
-    site: String,
-    path: String,
-    config: Option<String>,
-    signature: Option<String>,
-}
-
-impl AuthenticatedConfig for CommentsRequest {
-    fn site(&self)      -> String { self.site.clone() }
-    fn json(&self)      -> Option<String> { self.config.clone() }
-    fn signature(&self) -> Option<String> { self.signature.clone() }
-}
-
-#[derive(Deserialize)]
-struct PostCommentRequest {
-    site: String,
-    path: String,
-    comment: CommentData,
-    config: Option<String>,
-    signature: Option<String>,
-}
-
-impl AuthenticatedConfig for PostCommentRequest {
-    fn site(&self)      -> String { self.site.clone() }
-    fn json(&self)      -> Option<String> { self.config.clone() }
-    fn signature(&self) -> Option<String> { self.signature.clone() }
 }
 
 #[derive(Deserialize)]
@@ -265,30 +236,25 @@ fn comments_page(
 async fn comments(
     ctx: Context,
     cursor: Option<Cursor>,
-    moderator: Option<AuthenticatedModerator>,
-    Json(comments_request): Json<CommentsRequest>,
+    Json(req): Json<ApiRequest<()>>,
 ) -> Result<Json<CommentsPage>> {
-    let (config, authenticated_user) = comments_request.authenticated_config(&ctx.db).await?;
+    let (config, user) = req.extract(&ctx.db).await?;
 
-    if config.private && authenticated_user.is_none() && moderator.is_none() { return Err(Error::Unauthorized) }
+    if config.private && user.is_none() { return Err(Error::Unauthorized) }
 
-    let page = find_by_site_and_path(&ctx.db, &comments_request.site, &comments_request.path).await?;
-    match page {
-        None => Err(Error::NotFound),
-        Some(p) => {
-            // We need the fetch limit + 1 in order
-            // to work out if there is a next page or not
-            let parents = parents(&ctx.db, p.id, config.comments_per_page + 1, cursor).await?;
-            let replies = nested_replies(&ctx.db, config.replies_per_comment + 1, &parents).await?;
+    let page = find_by_site_and_path(&ctx.db, &req.site, &req.path).await?;
 
-            Ok(Json(comments_page(
-                parents,
-                replies,
-                p.comments_count,
-                config,
-            )))
-        }
-    }
+    // We need the fetch limit + 1 in order
+    // to work out if there is a next page or not
+    let parents = parents(&ctx.db, page.id, config.comments_per_page + 1, cursor).await?;
+    let replies = nested_replies(&ctx.db, config.replies_per_comment + 1, &parents).await?;
+
+    Ok(Json(comments_page(
+        parents,
+        replies,
+        page.comments_count,
+        config,
+    )))
 }
 
 async fn replies(
@@ -341,13 +307,12 @@ async fn replies(
 async fn thread(
     ctx: Context,
     cursor: Option<Cursor>,
-    moderator: Option<AuthenticatedModerator>,
     Path(comment_id): Path<i64>,
-    Json(comments_request): Json<CommentsRequest>,
+    Json(req): Json<ApiRequest<()>>,
 ) -> Result<Json<Thread>> {
-    let (config, authenticated_user) = comments_request.authenticated_config(&ctx.db).await?;
+    let (config, user) = req.extract(&ctx.db).await?;
 
-    if config.private && authenticated_user.is_none() && moderator.is_none() { return Err(Error::Unauthorized) }
+    if config.private && user.is_none() { return Err(Error::Unauthorized) }
 
     let all_replies = replies(&ctx.db, comment_id, config.replies_per_comment + 1, cursor).await?;
 
@@ -382,31 +347,39 @@ async fn thread(
 // /// POST /api/comment
 async fn post_comment(
     ctx: Context,
-    moderator: Option<AuthenticatedModerator>,
-    Json(comment_request): Json<PostCommentRequest>,
+    Json(req): Json<ApiRequest<CommentData>>,
 ) -> Result<Json<Comment>> {
-    let (config, authenticated_user) = comment_request.authenticated_config(&ctx.db).await?;
+    match req.payload {
+        None => Err(Error::unprocessable_entity([("payload", "can't be blank")])),
+        Some(ref data) => {
+            if data.body.len() < 1 { return Err(Error::unprocessable_entity([("body", "can't be blank")])) }
 
-    let requires_user = config.private || !config.anonymous_comments;
-    let no_user = moderator.is_none() && authenticated_user.is_none();
+            let (config, user) = req.extract(&ctx.db).await?;
 
-    if requires_user && no_user { return Err(Error::Unauthorized) }
+            let requires_user = config.private || !config.anonymous;
 
-    let page = create_or_find_by_site_and_path(&ctx.db, &comment_request.site, &comment_request.path).await?;
-    if page.locked { return Err(Error::Forbidden) }
+            if requires_user && user.is_none() { return Err(Error::Unauthorized) }
 
-    let mut q = String::from("INSERT INTO comments (page_id");
-    let mut v = String::from(" VALUES (?");
+            let page = create_or_find_by_site_and_path(&ctx.db, &req.site, &req.path).await?;
 
+            if page.locked { return Err(Error::Forbidden) }
 
-    let commenter = get_commenter(&ctx.db, &comment_request.site, authenticated_user, moderator).await?;
+            let mut q = String::from("INSERT INTO comments (page_id, body");
+            let mut v = String::from(" VALUES (?, ?");
 
-    if commenter.is_some() {
-        q.push_str(", user_id");
-        v.push_str(", ?");
+            if let Some(ref u) = user {
+                q.push_str(", user_id, name");
+                v.push_str(", ?, ?");
+                if let Some(ref a) = u.avatar {
+                    q.push_str(", avatar");
+                    v.push_str(", ?");
+                }
+            } else if data.name.is_some() {
+                q.push_str(", name");
+                v.push_str(", ?")
+            }
+
+            Err(Error::NotFound)
+        }
     }
-
-
-
-    Err(Error::NotFound)
 }

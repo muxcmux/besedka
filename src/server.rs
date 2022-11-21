@@ -6,14 +6,14 @@ use anyhow::Context;
 
 use axum::{
     routing::get,
-    Router, response::IntoResponse, Extension, body::Bytes, http::{Method, HeaderValue}
+    Router, response::IntoResponse, Extension, body::Bytes
 };
 
 use sqlx::SqlitePool;
 use tower::ServiceBuilder;
 use tower_http::{
     trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
-    LatencyUnit, timeout::TimeoutLayer, compression::CompressionLayer, cors::{CorsLayer, Any},
+    LatencyUnit, timeout::TimeoutLayer, compression::CompressionLayer, cors::CorsLayer,
 };
 
 use crate::api;
@@ -36,8 +36,8 @@ pub async fn run(config: Server, db: SqlitePool) -> anyhow::Result<()> {
 
     if config.ssl() {
         let ssl_config = RustlsConfig::from_pem_file(
-            config.ssl_key.unwrap(),
-            config.ssl_cert.unwrap()
+            config.ssl_cert.unwrap(),
+            config.ssl_key.unwrap()
         ).await.unwrap();
         axum_server::bind_rustls(config.bind, ssl_config)
             .serve(app.into_make_service())

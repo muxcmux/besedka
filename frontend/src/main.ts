@@ -6,8 +6,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (container) {
     const configContainer = document.getElementById('besedka-config')
-    const config = configContainer?.innerText
-    const signature = configContainer?.dataset?.signature
+    let config = configContainer?.innerText
+    if (config) config = btoa(config)
+    let signature = configContainer?.dataset?.signature
 
     const cfg: ConfigRequest = {
       site: window.location.hostname,
@@ -16,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
       signature
     }
 
-    const app = new App(container, cfg)
-    app.run()
+    new App(container, cfg)
   }
 })

@@ -1,3 +1,3 @@
 pub mod pages;
 pub mod configs;
-pub mod users;
+pub mod moderators;

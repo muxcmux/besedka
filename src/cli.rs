@@ -28,19 +28,21 @@ impl Cli {
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum Commands {
-    Server(Server),
-    Config(Config),
-    Moderators(Moderators)
+    Server(ServerArgs),
+    #[command(subcommand)]
+    Config(ConfigCommands),
+    #[command(subcommand)]
+    Moderators(ModeratorsCommands),
 }
 
 #[derive(Debug, Clone, Args)]
 /// Run the besedka commenting system server
-pub struct Server {
+pub struct ServerArgs {
     #[arg(short, long, value_name = "ADDR", default_value = "0.0.0.0:6353")]
     /// Address and port to listen on
     pub bind: SocketAddr,
 
-    #[arg(short, long, value_name = "FILE", value_parser = valid_file)]
+    #[arg(long, value_name = "FILE", value_parser = valid_file)]
     /// Path to a key file (required for TLS)
     pub ssl_key: Option<String>,
 
@@ -49,42 +51,22 @@ pub struct Server {
     pub ssl_cert: Option<String>
 }
 
-#[derive(Debug, Clone, Args)]
-/// View or edit besedka configuration
-pub struct Config {
-    #[command(subcommand)]
-    pub command: Option<ConfigCommands>,
-    #[command(flatten)]
-    pub get: ConfigGetCommand,
-}
-
 #[derive(Debug, Clone, Subcommand)]
+/// View or edit site configuration
 pub enum ConfigCommands {
-    /// Prints all available configurations
+    /// View all available configurations
     List,
-    Set(ConfigSetCommand),
-    /// Generates a new secret for the configuration
-    ResetSecret {
-        #[arg(short, long, value_name = "HOST", default_value = "default")]
-        /// Hostname (including subdomain)
-        site: String
-    }
+    /// Display a site config
+    Get { site: String },
+    /// Delete a site configuration
+    #[command(alias("delete"))]
+    Remove { site: String },
+    Set(ConfigSetCommandArgs),
 }
 
 #[derive(Debug, Clone, Args)]
-#[command(args_conflicts_with_subcommands = true)]
-/// Print the configuration for a site
-pub struct ConfigGetCommand {
-    #[arg(short, long, value_name = "HOST", default_value = "default")]
-    /// Hostname (including subdomain)
-    pub site: String,
-}
-
-#[derive(Debug, Clone, Args)]
-/// Create or update a config for a site
-pub struct ConfigSetCommand {
-    #[arg(short, long, value_name = "HOST", default_value = "default")]
-    /// Hostname (including subdomain)
+/// Update a site config (creates if missing)
+pub struct ConfigSetCommandArgs {
     pub site: String,
 
     #[arg(long)]
@@ -94,11 +76,11 @@ pub struct ConfigSetCommand {
 
     #[arg(long)]
     /// Set to true to allow anyone to post comments
-    pub anonymous_comments: Option<bool>,
+    pub anonymous: Option<bool>,
 
     #[arg(long)]
-    /// Set true to require a moderator to approve comments
-    /// before they are visible to everyone on your page
+    /// Set to true to require moderator approval
+    /// before comments are visible to everyone
     pub moderated: Option<bool>,
 
     #[arg(long)]
@@ -119,35 +101,22 @@ pub struct ConfigSetCommand {
     pub theme: Option<String>,
 }
 
-#[derive(Debug, Clone, Args)]
-/// View or edit moderators
-pub struct Moderators {
-    #[arg(short, long, value_name = "HOST", default_value = "default", global = true)]
-    /// Hostname (including subdomain)
-    pub site: String,
-    #[command(subcommand)]
-    pub command: Option<ModeratorsCommands>,
-    #[command(flatten)]
-    pub list: ModeratorsListCommand
-}
-
 #[derive(Debug, Clone, Subcommand)]
+/// Manage moderators
 pub enum ModeratorsCommands {
-    Add(ModeratorsAddCommand),
+    /// List all moderators
+    List,
+    Add(ModeratorsAddCommandArgs),
+    /// Remove a moderator
+    #[command(alias("delete"))]
+    Remove { name: String }
 }
 
 #[derive(Debug, Clone, Args)]
-#[command(args_conflicts_with_subcommands = true)]
-/// Prints all the moderators for a site
-pub struct ModeratorsListCommand;
-
-#[derive(Debug, Clone, Args)]
-pub struct ModeratorsAddCommand {
-    #[arg[short, long]]
-    /// The moderator username used to log in
-    pub username: String,
+/// Create or update a moderator
+pub struct ModeratorsAddCommandArgs {
     #[arg(short, long)]
-    /// Name displayed in comments
+    /// Name to log in with also displayed in comments, must be unique
     pub name: String,
     #[arg(short, long)]
     /// Password used for login

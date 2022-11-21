@@ -10,7 +10,7 @@ pub struct Page {
   pub locked: bool
 }
 
-pub async fn find_by_site_and_path(db: &SqlitePool, site: &str, path: &str) -> sqlx::Result<Option<Page>> {
+pub async fn find_by_site_and_path(db: &SqlitePool, site: &str, path: &str) -> sqlx::Result<Page> {
     Ok(
         query_as!(
             Page,
@@ -18,7 +18,7 @@ pub async fn find_by_site_and_path(db: &SqlitePool, site: &str, path: &str) -> s
             site,
             path
         )
-        .fetch_optional(db)
+        .fetch_one(db)
         .await?
     )
 }

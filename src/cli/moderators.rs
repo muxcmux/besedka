@@ -1,12 +1,12 @@
 use sqlx::SqlitePool;
 
-use crate::db::users::{User, all, insert_moderator};
+use crate::db::moderators::{Moderator, all, insert_moderator};
 
-pub async fn list(db: &SqlitePool, site: String) {
-    match all(db, &site).await {
+pub async fn list(db: &SqlitePool) {
+    match all(db).await {
         Err(e) => println!("{}", e),
         Ok(moderators) => {
-            println!("{} moderators: Found {}", site, moderators.len());
+            println!("Moderators: Found {}", moderators.len());
             for moderator in moderators {
                 print_moderator(moderator);
             }
@@ -14,31 +14,31 @@ pub async fn list(db: &SqlitePool, site: String) {
     }
 }
 
-pub async fn create(db: &SqlitePool, moderator: super::ModeratorsAddCommand, site: String) {
-    match insert_moderator(db, moderator, &site).await {
-        Err(e) => println!("{}", e),
+pub async fn create(db: &SqlitePool, moderator: super::ModeratorsAddCommandArgs) {
+    match insert_moderator(db, moderator).await {
+        Err(error) => {
+            match error {
+                sqlx::Error::Database(e) if e.message().contains("UNIQUE") => {
+                    println!("Moderator with that name already exists");
+                },
+                _ => println!("{}", error),
+            }
+        },
         Ok(result) => {
             println!("Success!");
-            match result {
-                None => println!("Moderator not found"),
-                Some(m) => print_moderator(m)
-            }
+            print_moderator(result);
         }
     }
 }
 
-fn print_moderator(moderator: User) {
+fn print_moderator(moderator: Moderator) {
     println!(r#"
 {}
 {}
-id:     {}
-name:   {}
 avatar: {}
 "#,
-        moderator.username,
-        "-".repeat(moderator.username.len()),
-        moderator.id,
         moderator.name,
+        "-".repeat(moderator.name.len()),
         moderator.avatar.unwrap_or(String::from("-"))
     )
 }
