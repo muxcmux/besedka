@@ -53,7 +53,6 @@ pub async fn run(config: ServerArgs, db: SqlitePool) -> anyhow::Result<()> {
 
 fn router(context: Arc<api::AppContext>) -> Router {
     let middleware = ServiceBuilder::new()
-        .layer(CompressionLayer::new())
         .layer(
             TraceLayer::new_for_http()
                 .on_body_chunk(|chunk: &Bytes, latency: Duration, _: &tracing::Span| {
@@ -62,6 +61,7 @@ fn router(context: Arc<api::AppContext>) -> Router {
                 .make_span_with(DefaultMakeSpan::new().include_headers(true))
                 .on_response(DefaultOnResponse::new().include_headers(true).latency_unit(LatencyUnit::Micros)),
         )
+        .layer(CompressionLayer::new())
         .layer(TimeoutLayer::new(Duration::from_secs(5)))
         .layer(Extension(context))
         .layer(CorsLayer::permissive());
@@ -70,7 +70,7 @@ fn router(context: Arc<api::AppContext>) -> Router {
         .route("/", get(root))
         .merge(api::comments::router())
         .merge(assets::router())
-        .layer(middleware.into_inner())
+        .layer(middleware)
 }
 
 fn build_context(db: SqlitePool) -> Arc<api::AppContext> {

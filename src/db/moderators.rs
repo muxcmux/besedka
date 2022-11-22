@@ -1,4 +1,4 @@
-use sqlx::{query_as, SqlitePool, FromRow};
+use sqlx::{query_as, SqlitePool, FromRow, query};
 use serde::Serialize;
 use crate::{cli::ModeratorsAddCommandArgs, api::Result};
 use argon2::{

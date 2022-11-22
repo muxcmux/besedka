@@ -1,32 +1,23 @@
 use crate::{
     api::{Context, Result},
-    db::{sites::Site, pages::{find_by_site_and_path, create_or_find_by_site_and_path}},
+    db::{
+        comments::{nested_replies, root_comments, replies, Comment},
+        pages::{create_or_find_by_site_and_path, find_by_site_and_path},
+        sites::Site,
+    },
 };
 use axum::{extract::Path, routing::post, Json, Router};
 use chrono::{DateTime, Utc};
-use serde::{Serialize, Deserialize};
-use sqlx::{query_as, FromRow, SqlitePool};
+use serde::{Deserialize, Serialize};
+use sqlx::query_as;
 
-use super::{Cursor, Error, ApiRequest};
+use super::{ApiRequest, Cursor, Error};
 
 pub fn router() -> Router {
     Router::new()
         .route("/api/comments", post(comments))
         .route("/api/comment", post(post_comment))
         .route("/api/thread/:comment_id", post(thread))
-}
-
-#[derive(FromRow, Clone, Debug, Serialize)]
-struct Comment {
-    id: i64,
-    parent_id: Option<i64>,
-    name: String,
-    body: String,
-    avatar: Option<String>,
-    replies_count: i64,
-    locked: bool,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
 }
 
 #[derive(Serialize)]
@@ -60,96 +51,6 @@ struct CommentsPage {
 struct CommentData {
     name: Option<String>,
     body: String,
-}
-
-async fn parents(
-    db: &SqlitePool,
-    page_id: i64,
-    limit: i64,
-    cursor: Option<Cursor>,
-) -> Result<Vec<Comment>> {
-    let query = match cursor {
-        Some(cur) => {
-            query_as::<_, Comment>(
-                r#"
-                    SELECT id, parent_id, name, body, avatar, replies_count,
-                    locked, created_at, updated_at
-                    FROM comments
-                    WHERE page_id = ?
-                    AND reviewed_at NOT NULL
-                    AND parent_id IS NULL
-                    AND (datetime(created_at) < datetime(?) OR (datetime(created_at) = datetime(?) AND id < ?))
-                    ORDER BY datetime(created_at) DESC
-                    LIMIT ?
-                "#,
-             )
-             .bind(page_id)
-             .bind(cur.created_at)
-             .bind(cur.created_at)
-             .bind(cur.id)
-             .bind(limit)
-        },
-        None => {
-            query_as::<_, Comment>(
-                r#"
-                    SELECT id, parent_id, name, body, avatar, replies_count,
-                    locked, created_at, updated_at
-                    FROM comments
-                    WHERE page_id = ?
-                    AND reviewed_at NOT NULL
-                    AND parent_id IS NULL
-                    ORDER BY datetime(created_at) DESC
-                    LIMIT ?
-                "#,
-            )
-            .bind(page_id)
-            .bind(limit)
-        }
-    };
-
-    Ok(query.fetch_all(db).await?)
-}
-
-async fn nested_replies(
-    db: &SqlitePool,
-    limit: i64,
-    parents: &Vec<Comment>,
-) -> Result<Vec<Comment>> {
-    let parent_ids: Vec<String> = parents.iter().map(|p| p.id.to_string()).collect();
-    let ids = parent_ids.join(",");
-
-    let query = format!(
-        r#"
-        SELECT
-            id, parent_id, name, body, avatar, replies_count,
-            locked,  created_at, updated_at
-        FROM (
-            SELECT
-                r.id AS id,
-                r.parent_id AS parent_id,
-                r.name AS name,
-                r.body AS body,
-                r.avatar AS avatar,
-                r.replies_count AS replies_count,
-                r.locked AS locked,
-                r.created_at AS created_at,
-                r.updated_at AS updated_at,
-                row_number() OVER (PARTITION BY c.id ORDER BY datetime(r.created_at), r.id) AS rn
-            FROM comments c
-            LEFT JOIN comments r
-            ON r.parent_id = c.id
-            WHERE r.reviewed_at NOT NULL
-        )
-        WHERE parent_id IN({ids})
-        AND id NOT NULL
-        AND rn <= {limit}
-        ORDER BY datetime(created_at) ASC;
-    "#,
-        ids = ids,
-        limit = limit
-    );
-
-    Ok(query_as::<_, Comment>(&query).fetch_all(db).await?)
 }
 
 fn comments_page(
@@ -246,7 +147,7 @@ async fn comments(
 
     // We need the fetch limit + 1 in order
     // to work out if there is a next page or not
-    let parents = parents(&ctx.db, page.id, site.comments_per_page + 1, cursor).await?;
+    let parents = root_comments(&ctx.db, page.id, site.comments_per_page + 1, cursor).await?;
     let replies = nested_replies(&ctx.db, site.replies_per_comment + 1, &parents).await?;
 
     Ok(Json(comments_page(
@@ -255,52 +156,6 @@ async fn comments(
         page.comments_count,
         site,
     )))
-}
-
-async fn replies(
-    db: &SqlitePool,
-    parent_id: i64,
-    limit: i64,
-    cursor: Option<Cursor>,
-) -> Result<Vec<Comment>> {
-    let query = match cursor {
-        Some(cur) => {
-            query_as::<_, Comment>(
-                r#"
-                     SELECT id, parent_id, name, body, avatar, replies_count,
-                     locked, created_at, updated_at
-                     FROM comments
-                     WHERE parent_id = ?
-                     AND reviewed_at NOT NULL
-                     AND (datetime(created_at) > datetime(?) OR (datetime(created_at) = datetime(?) AND id > ?))
-                     ORDER BY datetime(created_at) ASC
-                     LIMIT ?
-                 "#,
-             )
-             .bind(parent_id)
-             .bind(cur.created_at)
-             .bind(cur.created_at)
-             .bind(cur.id)
-             .bind(limit)
-        },
-        None => {
-            query_as::<_, Comment>(
-               r#"
-                    SELECT id, parent_id, name, body, avatar, replies_count,
-                    locked, created_at, updated_at
-                    FROM comments
-                    WHERE parent_id = ?
-                    AND reviewed_at NOT NULL
-                    ORDER BY datetime(created_at) ASC
-                    LIMIT ?
-                "#,
-            )
-            .bind(parent_id)
-            .bind(limit)
-        }
-    };
-
-    Ok(query.fetch_all(db).await?)
 }
 
 /// POST /api/thread/42
@@ -373,10 +228,11 @@ async fn post_comment(
             }
 
             let anon = String::from("Anonymous");
-            let (name, avatar) = commenter.as_ref().map_or(
-                (data.name.as_ref().unwrap_or(&anon), None),
-                |c| (&c.name, c.avatar.as_ref())
-            );
+            let (name, avatar) = commenter
+                .as_ref()
+                .map_or((data.name.as_ref().unwrap_or(&anon), None), |c| {
+                    (&c.name, c.avatar.as_ref())
+                });
 
             v.push_str(")");
             q.push_str(")");

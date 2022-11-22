@@ -45,7 +45,7 @@ export default class App {
 
   async loadComments() {
     try {
-      const response = await fetch(`${this.host}/api/shitcomments`, {
+      const response = await fetch(`${this.host}/api/comments`, {
         method: "POST",
         mode: "cors",
         body: JSON.stringify(this.config),

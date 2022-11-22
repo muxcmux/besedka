@@ -1,6 +1,6 @@
 use sqlx::SqlitePool;
 
-use crate::db::moderators::{Moderator, all, insert_moderator, find_by_name};
+use crate::db::moderators::{Moderator, all, insert_moderator, find_by_name, delete};
 
 pub async fn list(db: &SqlitePool) {
     match all(db).await {
@@ -36,8 +36,8 @@ pub async fn remove(db: &SqlitePool, name: &str) {
         Err(_) => {
             println!("Moderator {} not found.", name)
         },
-        Ok(result) => {
-            delete(db, name);
+        Ok(_) => {
+            delete(db, name).await.unwrap();
             println!("Deleted moderator {}", name);
         }
     }
