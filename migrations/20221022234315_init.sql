@@ -1,6 +1,6 @@
 CREATE TABLE sites (
   site                 VARCHAR NOT NULL UNIQUE,
-  secret               BLOB NOT NULL UNIQUE DEFAULT (randomblob(32)),
+  secret               BLOB NOT NULL UNIQUE DEFAULT (randomblob(48)),
   private              BOOLEAN NOT NULL DEFAULT 1,
   anonymous            BOOLEAN NOT NULL DEFAULT 0,
   moderated            BOOLEAN NOT NULL DEFAULT 1,
@@ -51,7 +51,7 @@ CREATE TABLE comments (
   reviewed_at   DATETIME,
   created_at    DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updated_at    DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  sid           BLOB NOT NULL DEFAULT (randomblob(256))
+  sid           BLOB NOT NULL DEFAULT (randomblob(48))
 );
 
 CREATE INDEX idx_comments_path      ON comments(page_id);

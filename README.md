@@ -150,3 +150,5 @@ results in a different signature than this:
 ```json
 {"name":"Dennis Ritchie","moderator":true}
 ```
+
+The `name` and `moderator` keys for the user obejct are required. The `avatar` key is optional.

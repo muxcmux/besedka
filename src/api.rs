@@ -1,5 +1,6 @@
 mod error;
 pub mod comments;
+pub mod login;
 pub mod extractors;
 use std::sync::Arc;
 
@@ -33,12 +34,6 @@ impl Cursor {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct ForeignUser {
-    pub name: String,
-    pub moderator: Option<bool>,
-    pub avatar: Option<String>
-}
-
 struct Commenter {
     name: String,
     avatar: Option<String>,
@@ -51,14 +46,6 @@ impl Commenter {
             name: moderator.name,
             avatar: moderator.avatar,
             moderator: true,
-        }
-    }
-
-    fn from_foreigh_user(user: ForeignUser) -> Self {
-        Self {
-            name: user.name,
-            avatar: user.avatar,
-            moderator: false,
         }
     }
 }
@@ -74,17 +61,24 @@ struct ApiRequest<T> {
 }
 
 impl<T> ApiRequest<T> {
+    fn sid(&self) -> Result<Vec<u8>> {
+        match self.sid {
+            None => Err(Error::BadRequest("No sid found in request")),
+            Some(ref s) => base64::decode(s)
+                .map_err(|_| Error::BadRequest("Can't base64 decode signature"))
+        }
+    }
     /// Returns the config for the requested site
     /// and an authorised user, either a moderator
     /// by a sid, or a signed 3rd party user
-    async fn extract(&self, db: &SqlitePool) -> Result<(Site, Option<Commenter>)> {
-        fn deserialize(json: &Vec<u8>) -> Result<ForeignUser> {
-            let requested: ForeignUser = serde_json::from_slice(json)?;
+    async fn extract_verified(&self, db: &SqlitePool) -> Result<(Site, Option<Commenter>)> {
+        fn deserialize(json_bytes: &Vec<u8>) -> Result<Commenter> {
+            let requested: Commenter = serde_json::from_slice(json_bytes)?;
             Ok(requested)
         }
 
         fn validate(
-            json: &Vec<u8>,
+            json_bytes: &Vec<u8>,
             signature: &String,
             secret: &Vec<u8>,
         ) -> Result<()>
@@ -92,7 +86,7 @@ impl<T> ApiRequest<T> {
             let decoded = base64::decode(signature)
                 .map_err(|_| Error::BadRequest("Can't base64 decode signature"))?;
             let key = hmac::Key::new(hmac::HMAC_SHA256, &secret);
-            hmac::verify(&key, json, &decoded)
+            hmac::verify(&key, json_bytes, &decoded)
                 .map_err(|_| Error::BadRequest("Cannot verify user object"))?;
             Ok(())
         }
@@ -104,8 +98,8 @@ impl<T> ApiRequest<T> {
         };
 
         // logged in moderators always take precedence over 3rd party users
-        if let Some(ref sid) = self.sid {
-            match find_by_sid(db, sid).await {
+        if let Ok(sid) = self.sid() {
+            match find_by_sid(db, &sid).await {
                 Err(_) => return Err(Error::Unauthorized),
                 Ok(moderator) => return Ok((site, Some(Commenter::from_moderator(moderator)))),
             }
@@ -126,7 +120,7 @@ impl<T> ApiRequest<T> {
                     let _ = validate(&json, s, &site.secret)?;
 
                     // ok the signature is good
-                    Some(Commenter::from_foreigh_user(deserialized_user))
+                    Some(deserialized_user)
                 }
             }
         };

@@ -23,7 +23,6 @@ pub fn router() -> Router {
 #[derive(Serialize)]
 struct CommentWithReplies {
     id: i64,
-    parent_id: Option<i64>,
     name: String,
     body: String,
     avatar: Option<String>,
@@ -101,7 +100,6 @@ fn comments_page(
 
         comments.push(CommentWithReplies {
             id: parent.id,
-            parent_id: parent.parent_id,
             name: parent.name,
             body: parent.body,
             avatar: parent.avatar,
@@ -139,7 +137,7 @@ async fn comments(
     cursor: Option<Cursor>,
     Json(req): Json<ApiRequest<()>>,
 ) -> Result<Json<CommentsPage>> {
-    let (site, commenter) = req.extract(&ctx.db).await?;
+    let (site, commenter) = req.extract_verified(&ctx.db).await?;
 
     if site.private && commenter.is_none() { return Err(Error::Unauthorized) }
 
@@ -165,7 +163,7 @@ async fn thread(
     Path(comment_id): Path<i64>,
     Json(req): Json<ApiRequest<()>>,
 ) -> Result<Json<Thread>> {
-    let (site, commenter) = req.extract(&ctx.db).await?;
+    let (site, commenter) = req.extract_verified(&ctx.db).await?;
 
     if site.private && commenter.is_none() { return Err(Error::Unauthorized) }
 
@@ -199,17 +197,22 @@ async fn thread(
     Ok(Json(Thread { replies, cursor }))
 }
 
+#[derive(Serialize)]
+struct PostCommentResponse {
+    sid: String,
+    comment: Comment,
+}
 /// POST /api/comment
 async fn post_comment(
     ctx: Context,
     Json(req): Json<ApiRequest<CommentData>>,
-) -> Result<Json<Comment>> {
+) -> Result<Json<PostCommentResponse>> {
     match req.payload {
         None => Err(Error::unprocessable_entity([("payload", "can't be blank")])),
         Some(ref data) => {
             if data.body.len() < 1 { return Err(Error::unprocessable_entity([("body", "can't be blank")])) }
 
-            let (site, commenter) = req.extract(&ctx.db).await?;
+            let (site, commenter) = req.extract_verified(&ctx.db).await?;
 
             let requires_user = site.private || !site.anonymous;
 
@@ -253,7 +256,11 @@ async fn post_comment(
 
             tx.commit().await?;
 
-            Ok(Json(comment))
+            let sid = base64::encode(&comment.sid);
+
+            Ok(Json({
+                PostCommentResponse { sid, comment }
+            }))
         }
     }
 }

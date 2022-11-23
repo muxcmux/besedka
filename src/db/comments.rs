@@ -7,15 +7,19 @@ use crate::api::{Result, Cursor};
 #[derive(FromRow, Clone, Debug, Serialize)]
 pub struct Comment {
     pub id: i64,
+    #[serde(skip_serializing)]
     pub parent_id: Option<i64>,
     pub name: String,
     pub body: String,
     pub avatar: Option<String>,
     pub replies_count: i64,
+    #[serde(skip_serializing)]
     pub locked: bool,
-    pub reviewed_at: DateTime<Utc>,
+    pub reviewed_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    #[serde(skip_serializing)]
+    pub sid: Vec<u8>,
 }
 
 pub async fn root_comments(
@@ -29,7 +33,7 @@ pub async fn root_comments(
             query_as::<_, Comment>(
                 r#"
                     SELECT id, parent_id, name, body, avatar, replies_count,
-                    locked, reviewed_at, created_at, updated_at
+                    locked, reviewed_at, created_at, updated_at, sid
                     FROM comments
                     WHERE page_id = ?
                     AND reviewed_at NOT NULL
@@ -49,7 +53,7 @@ pub async fn root_comments(
             query_as::<_, Comment>(
                 r#"
                     SELECT id, parent_id, name, body, avatar, replies_count,
-                    locked, reviewed_at, created_at, updated_at
+                    locked, reviewed_at, created_at, updated_at, sid
                     FROM comments
                     WHERE page_id = ?
                     AND reviewed_at NOT NULL
@@ -78,7 +82,7 @@ pub async fn nested_replies(
         r#"
         SELECT
             id, parent_id, name, body, avatar, replies_count,
-            locked, reviewed_at, created_at, updated_at
+            locked, reviewed_at, created_at, updated_at, sid
         FROM (
             SELECT
                 r.id AS id,
@@ -91,6 +95,7 @@ pub async fn nested_replies(
                 r.reviewed_at AS reviewed_at,
                 r.created_at AS created_at,
                 r.updated_at AS updated_at,
+                r.sid AS sid,
                 row_number() OVER (PARTITION BY c.id ORDER BY datetime(r.created_at), r.id) AS rn
             FROM comments c
             LEFT JOIN comments r
@@ -120,7 +125,7 @@ pub async fn replies(
             query_as::<_, Comment>(
                 r#"
                      SELECT id, parent_id, name, body, avatar, replies_count,
-                     locked, reviewed_at, created_at, updated_at
+                     locked, reviewed_at, created_at, updated_at, sid
                      FROM comments
                      WHERE parent_id = ?
                      AND reviewed_at NOT NULL
@@ -139,7 +144,7 @@ pub async fn replies(
             query_as::<_, Comment>(
                r#"
                     SELECT id, parent_id, name, body, avatar, replies_count,
-                    locked, reviewed_at, created_at, updated_at
+                    locked, reviewed_at, created_at, updated_at, sid
                     FROM comments
                     WHERE parent_id = ?
                     AND reviewed_at NOT NULL

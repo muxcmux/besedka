@@ -50,7 +50,7 @@ pub async fn insert_moderator(db: &SqlitePool, moderator: ModeratorsAddCommandAr
     )
 }
 
-pub async fn find_by_sid(db: &SqlitePool, sid: &str) -> Result<Moderator> {
+pub async fn find_by_sid(db: &SqlitePool, sid: &Vec<u8>) -> Result<Moderator> {
     Ok(
         query_as!(Moderator, "SELECT * FROM moderators WHERE sid = ? LIMIT 1", sid)
             .fetch_one(db)
