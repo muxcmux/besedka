@@ -1,3 +1,4 @@
+use ring::hmac;
 use sqlx::{SqlitePool, FromRow, query_as, query};
 use serde::Serialize;
 
@@ -20,9 +21,13 @@ impl Site {
     pub fn secret(&self) -> String {
         base64::encode(&self.secret)
     }
+
+    pub fn key(&self) -> hmac::Key {
+        hmac::Key::new(hmac::HMAC_SHA256, &self.secret)
+    }
 }
 
-pub async fn all(db: &SqlitePool) -> anyhow::Result<Vec<Site>> {
+pub async fn all(db: &SqlitePool) -> sqlx::Result<Vec<Site>> {
     let sites = query_as!(Site, "SELECT * FROM sites")
         .fetch_all(db)
         .await?;
@@ -30,10 +35,9 @@ pub async fn all(db: &SqlitePool) -> anyhow::Result<Vec<Site>> {
 }
 
 /// Finds a config for a given site
-pub async fn find(db: &SqlitePool, site: &str) -> sqlx::Result<Option<Site>> {
-    let site = query_as!(Site, "SELECT * FROM sites WHERE site = ?", site)
-        .fetch_optional(db).await?;
-    Ok(site)
+pub async fn find(db: &SqlitePool, site: &str) -> sqlx::Result<Site> {
+    Ok(query_as!(Site, "SELECT * FROM sites WHERE site = ? LIMIT 1", site)
+        .fetch_one(db).await?)
 }
 
 /// Deletes a config for a site
@@ -84,12 +88,12 @@ pub async fn insert(db: &SqlitePool, args: SitesCommandArgs) -> sqlx::Result<Sit
 
     result.execute(db).await?;
 
-    Ok(find(db, &args.site).await?.unwrap())
+    Ok(find(db, &args.site).await?)
 }
 
 /// Updates a configuration for a given site from
 /// command line arguments and returns the updated row
-pub async fn update(db: &SqlitePool, existing: Site, args: SitesCommandArgs) -> anyhow::Result<Site> {
+pub async fn update(db: &SqlitePool, existing: Site, args: SitesCommandArgs) -> sqlx::Result<Site> {
     let mut update = String::from("UPDATE sites SET site = ?");
 
     if let Some(_) = args.private { update.push_str(", private = ?") };
@@ -118,5 +122,5 @@ pub async fn update(db: &SqlitePool, existing: Site, args: SitesCommandArgs) -> 
 
     result.execute(db).await?;
 
-    Ok(find(db, &existing.site).await?.unwrap())
+    Ok(find(db, &existing.site).await?)
 }

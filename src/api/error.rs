@@ -1,11 +1,10 @@
 use std::{borrow::Cow, collections::HashMap};
 
 use axum::{
-    http::{header::WWW_AUTHENTICATE, HeaderMap, HeaderValue, StatusCode},
+    http::StatusCode,
     response::IntoResponse,
     Json,
 };
-use sqlx::error::DatabaseError;
 
 /// A common error struct for the API which wraps
 /// anyhow and sqlx errors and can be converted into
@@ -98,17 +97,6 @@ impl IntoResponse for Error {
 
                 return (StatusCode::UNPROCESSABLE_ENTITY, Json(Errors { errors })).into_response();
             },
-            Self::Unauthorized => {
-                return (
-                    self.status_code(),
-                    [(WWW_AUTHENTICATE, HeaderValue::from_static("Token"))]
-                        .into_iter()
-                        .collect::<HeaderMap>(),
-                    self.to_string(),
-                )
-                    .into_response();
-            },
-
             Self::Sqlx(ref e) => {
                 tracing::error!("SQLx error: {:?}", e);
             },
@@ -121,33 +109,5 @@ impl IntoResponse for Error {
         }
 
         (self.status_code(), self.to_string()).into_response()
-    }
-}
-
-use crate::api::Result;
-
-pub trait ResultExt<T> {
-    fn on_constraint(
-        self,
-        name: &str,
-        f: impl FnOnce(Box<dyn DatabaseError>) -> Error,
-    ) -> Result<T, Error>;
-}
-
-impl<T, E> ResultExt<T> for Result<T, E>
-where
-    E: Into<Error>,
-{
-    fn on_constraint(
-        self,
-        name: &str,
-        closure: impl FnOnce(Box<dyn DatabaseError>) -> Error,
-    ) -> Result<T, Error> {
-        self.map_err(|e| match e.into() {
-            Error::Sqlx(sqlx::Error::Database(dbe)) if dbe.constraint() == Some(name) => {
-                closure(dbe)
-            }
-            e => e,
-        })
     }
 }

@@ -3,11 +3,8 @@ use sqlx::SqlitePool;
 
 pub async fn print(db: &SqlitePool, site: &str) {
     match find(db, &site).await {
-        Err(e) => println!("{}", e),
-        Ok(cfg) => match cfg {
-            None => println!("Site {} not found. Try adding it first:\n$ besedka site add {}", &site, &site),
-            Some(c) => print_site(&c),
-        },
+        Err(_) => println!("Site {} not found. Try adding it first:\n$ besedka site add {}", &site, &site),
+        Ok(cfg) => print_site(&cfg)
     }
 }
 
@@ -25,15 +22,10 @@ pub async fn list(db: &SqlitePool) {
 
 pub async fn delete(db: &SqlitePool, site: &str) {
     match find(db, &site).await {
-        Err(e) => println!("{}", e),
-        Ok(cfg) => match cfg {
-            None => println!("Site {} not found.", site),
-            Some(_) => {
-                match sites::delete(db, site).await {
-                    Err(e) => println!("{}", e),
-                    Ok(_) => println!("Deleted config for site {}", site),
-                }
-            }
+        Err(_) => println!("Site {} not found.", site),
+        Ok(_) => match sites::delete(db, site).await {
+            Err(e) => println!("{}", e),
+            Ok(_) => println!("Deleted config for site {}", site)
         },
     }
 }
@@ -55,12 +47,14 @@ pub async fn create(db: &SqlitePool, args: super::SitesCommandArgs) {
 }
 
 pub async fn update(db: &SqlitePool, args: super::SitesCommandArgs) {
-    match find(db, &args.site).await.unwrap() {
-        None => println!("Site {} not found. Try adding it first:\n$ besedka site add {}", &args.site, &args.site),
-        Some(existing) => {
-            let site = sites::update(db, existing, args).await.unwrap();
-            println!("Success!");
-            print_site(&site);
+    match find(db, &args.site).await {
+        Err(_) => println!("Site {} not found. Try adding it first:\n$ besedka site add {}", &args.site, &args.site),
+        Ok(existing) => match sites::update(db, existing, args).await {
+            Err(e) => println!("{}", e),
+            Ok(s) => {
+                println!("Success!");
+                print_site(&s);
+            }
         }
     }
 }

@@ -7,7 +7,7 @@ use std::sync::Arc;
 use axum::Extension;
 use chrono::{DateTime, Utc};
 use ring::hmac;
-use serde::{Serialize, Deserialize};
+use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use sqlx::SqlitePool;
 
 pub struct AppContext {
@@ -16,7 +16,7 @@ pub struct AppContext {
 
 pub type Context = Extension<Arc<AppContext>>;
 
-pub use error::{Error, ResultExt};
+pub use error::Error;
 
 use crate::db::{sites::{find, Site}, moderators::{Moderator, find_by_sid}};
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -34,13 +34,13 @@ impl Cursor {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-struct Commenter {
+struct User {
     name: String,
     avatar: Option<String>,
     moderator: bool,
 }
 
-impl Commenter {
+impl User {
     fn from_moderator(moderator: Moderator) -> Self {
         Self {
             name: moderator.name,
@@ -54,73 +54,67 @@ impl Commenter {
 struct ApiRequest<T> {
     site: String,
     path: String,
-    user: Option<String>,
-    signature: Option<String>,
-    sid: Option<String>,
+    user: Option<Base64>,
+    signature: Option<Base64>,
+    sid: Option<Base64>,
     payload: Option<T>
 }
 
-impl<T> ApiRequest<T> {
-    fn sid(&self) -> Result<Vec<u8>> {
-        match self.sid {
-            None => Err(Error::BadRequest("No sid found in request")),
-            Some(ref s) => base64::decode(s)
-                .map_err(|_| Error::BadRequest("Can't base64 decode signature"))
-        }
+#[derive(Debug)]
+struct Base64(Vec<u8>);
+impl Serialize for Base64 {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(&base64::display::Base64Display::with_config(
+            &self.0,
+            base64::STANDARD,
+        ))
     }
+}
+
+impl<'de> Deserialize<'de> for Base64 {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Vis;
+        impl serde::de::Visitor<'_> for Vis {
+            type Value = Base64;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a base64 string")
+            }
+
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                base64::decode(v).map(Base64).map_err(serde::de::Error::custom)
+            }
+        }
+        deserializer.deserialize_str(Vis)
+    }
+}
+
+impl<T> ApiRequest<T> {
     /// Returns the config for the requested site
     /// and an authorised user, either a moderator
     /// by a sid, or a signed 3rd party user
-    async fn extract_verified(&self, db: &SqlitePool) -> Result<(Site, Option<Commenter>)> {
-        fn deserialize(json_bytes: &Vec<u8>) -> Result<Commenter> {
-            let requested: Commenter = serde_json::from_slice(json_bytes)?;
-            Ok(requested)
-        }
-
-        fn validate(
-            json_bytes: &Vec<u8>,
-            signature: &String,
-            secret: &Vec<u8>,
-        ) -> Result<()>
-        {
-            let decoded = base64::decode(signature)
-                .map_err(|_| Error::BadRequest("Can't base64 decode signature"))?;
-            let key = hmac::Key::new(hmac::HMAC_SHA256, &secret);
-            hmac::verify(&key, json_bytes, &decoded)
-                .map_err(|_| Error::BadRequest("Cannot verify user object"))?;
-            Ok(())
-        }
-
+    async fn extract_verified(&self, db: &SqlitePool) -> Result<(Site, Option<User>)> {
         // Fail if there's no config for the requested site
-        let site = match find(db, &self.site).await? {
-            None => return Err(Error::BadRequest("No configuration found for requested site")),
-            Some(s) => s,
-        };
+        let site = find(db, &self.site).await
+            .map_err(|_| Error::BadRequest("No configuration found for requested site"))?;
 
         // logged in moderators always take precedence over 3rd party users
-        if let Ok(sid) = self.sid() {
-            match find_by_sid(db, &sid).await {
+        if let Some(Base64(ref sid)) = self.sid {
+            match find_by_sid(db, sid).await {
                 Err(_) => return Err(Error::Unauthorized),
-                Ok(moderator) => return Ok((site, Some(Commenter::from_moderator(moderator)))),
+                Ok(moderator) => return Ok((site, Some(User::from_moderator(moderator)))),
             }
         }
 
         let user = match &self.user {
             None => None,
-            Some(base64_encoded_json) => match &self.signature {
+            Some(Base64(ref json_bytes)) => match &self.signature {
                 None => None,
-                Some(s) => {
-                    let json = base64::decode(&base64_encoded_json)
-                        .map_err(|_| Error::BadRequest("Can't base64 decode user object"))?;
-
-                    let deserialized_user = deserialize(&json)?;
-
-                    // failed verification vs the signature will
-                    // return an error early
-                    let _ = validate(&json, s, &site.secret)?;
-
+                Some(Base64(ref s)) => {
+                    hmac::verify(&site.key(), json_bytes, s)
+                        .map_err(|_| Error::BadRequest("Cannot verify user object"))?;
                     // ok the signature is good
-                    Some(deserialized_user)
+                    Some(serde_json::from_slice(json_bytes)?)
                 }
             }
         };

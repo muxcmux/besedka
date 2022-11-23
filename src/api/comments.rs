@@ -137,9 +137,9 @@ async fn comments(
     cursor: Option<Cursor>,
     Json(req): Json<ApiRequest<()>>,
 ) -> Result<Json<CommentsPage>> {
-    let (site, commenter) = req.extract_verified(&ctx.db).await?;
+    let (site, user) = req.extract_verified(&ctx.db).await?;
 
-    if site.private && commenter.is_none() { return Err(Error::Unauthorized) }
+    if site.private && user.is_none() { return Err(Error::Unauthorized) }
 
     let page = find_by_site_and_path(&ctx.db, &req.site, &req.path).await?;
 
@@ -163,9 +163,9 @@ async fn thread(
     Path(comment_id): Path<i64>,
     Json(req): Json<ApiRequest<()>>,
 ) -> Result<Json<Thread>> {
-    let (site, commenter) = req.extract_verified(&ctx.db).await?;
+    let (site, user) = req.extract_verified(&ctx.db).await?;
 
-    if site.private && commenter.is_none() { return Err(Error::Unauthorized) }
+    if site.private && user.is_none() { return Err(Error::Unauthorized) }
 
     let all_replies = replies(&ctx.db, comment_id, site.replies_per_comment + 1, cursor).await?;
 
@@ -212,11 +212,11 @@ async fn post_comment(
         Some(ref data) => {
             if data.body.len() < 1 { return Err(Error::unprocessable_entity([("body", "can't be blank")])) }
 
-            let (site, commenter) = req.extract_verified(&ctx.db).await?;
+            let (site, user) = req.extract_verified(&ctx.db).await?;
 
             let requires_user = site.private || !site.anonymous;
 
-            if requires_user && commenter.is_none() { return Err(Error::Unauthorized) }
+            if requires_user && user.is_none() { return Err(Error::Unauthorized) }
 
             let page = create_or_find_by_site_and_path(&ctx.db, &req.site, &req.path).await?;
 
@@ -231,7 +231,7 @@ async fn post_comment(
             }
 
             let anon = String::from("Anonymous");
-            let (name, avatar) = commenter
+            let (name, avatar) = user
                 .as_ref()
                 .map_or((data.name.as_ref().unwrap_or(&anon), None), |c| {
                     (&c.name, c.avatar.as_ref())
