@@ -10,14 +10,17 @@ pub struct Page {
   pub locked: bool
 }
 
+pub async fn find(db: &SqlitePool, id: i64) -> sqlx::Result<Page> {
+    Ok(
+        query_as!(Page, "SELECT * FROM pages WHERE id = ?", id)
+        .fetch_one(db)
+        .await?
+    )
+}
+
 pub async fn find_by_site_and_path(db: &SqlitePool, site: &str, path: &str) -> sqlx::Result<Page> {
     Ok(
-        query_as!(
-            Page,
-            "SELECT * FROM pages WHERE site = ? AND path = ? LIMIT 1",
-            site,
-            path
-        )
+        query_as!(Page, "SELECT * FROM pages WHERE site = ? AND path = ? LIMIT 1", site, path)
         .fetch_one(db)
         .await?
     )

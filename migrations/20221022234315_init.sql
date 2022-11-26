@@ -19,7 +19,6 @@ END;
 CREATE TABLE moderators (
   name           VARCHAR NOT NULL UNIQUE,
   password       VARCHAR NOT NULL,
-  password_salt  VARCHAR NOT NULL,
   avatar         TEXT,
   sid            BLOB UNIQUE
 );
@@ -47,11 +46,10 @@ CREATE TABLE comments (
   body          VARCHAR NOT NULL,
   avatar        TEXT,
   replies_count INTEGER NOT NULL DEFAULT 0,
-  locked        BOOLEAN NOT NULL DEFAULT 0,
-  reviewed_at   DATETIME,
+  reviewed      BOOLEAN NOT NULL DEFAULT 0,
   created_at    DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updated_at    DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-  sid           BLOB NOT NULL DEFAULT (randomblob(48))
+  token         BLOB NOT NULL DEFAULT (randomblob(48))
 );
 
 CREATE INDEX idx_comments_path      ON comments(page_id);

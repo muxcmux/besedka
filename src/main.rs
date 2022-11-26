@@ -15,6 +15,8 @@ async fn main() -> anyhow::Result<()> {
     let args = cli::Cli::new();
 
     let db = SqlitePool::connect_lazy(&args.db_uri()).expect("Can't connect to database");
+
+    #[cfg(not(debug_assertions))]
     migrate!()
         .run(&db)
         .await

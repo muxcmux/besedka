@@ -49,7 +49,7 @@ pub async fn delete(db: &SqlitePool, site: &str) -> Result<sqlx::sqlite::SqliteQ
 
 /// Creates a new configration for a site from
 /// command line arguments and returns the result
-pub async fn insert(db: &SqlitePool, args: SitesCommandArgs) -> sqlx::Result<Site> {
+pub async fn insert(db: &SqlitePool, args: &SitesCommandArgs) -> sqlx::Result<Site> {
     fn append<T>(value: &Option<T>, attribute: &str, query: &mut String, values: &mut String) {
         if let Some(_) = value {
             query.push_str(&format!(", {}", attribute));
@@ -82,7 +82,7 @@ pub async fn insert(db: &SqlitePool, args: SitesCommandArgs) -> sqlx::Result<Sit
     if let Some(a) = args.comments_per_page { result = result.bind(a) }
     if let Some(a) = args.replies_per_comment { result = result.bind(a) }
     if let Some(a) = args.minutes_to_edit { result = result.bind(a) }
-    if let Some(a) = args.theme { result = result.bind(a) }
+    if let Some(ref a) = args.theme { result = result.bind(a) }
 
     result = result.bind(&args.site);
 

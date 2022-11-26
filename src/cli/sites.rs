@@ -31,8 +31,8 @@ pub async fn delete(db: &SqlitePool, site: &str) {
 }
 
 pub async fn create(db: &SqlitePool, args: super::SitesCommandArgs) {
-    let site = args.site.clone();
-    match insert(db, args).await {
+    let site = &args.site;
+    match insert(db, &args).await {
         Err(err) => match err {
             sqlx::Error::Database(e) if e.message().contains("UNIQUE") => {
                 println!("Site {} already exists. To update the config, use:\n$ besedka site update {}", &site, &site)

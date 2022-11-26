@@ -1,23 +1,30 @@
 use crate::{
-    api::{Context, Result},
+    api::{ApiRequest, Cursor, Error, Context, Result},
     db::{
-        comments::{nested_replies, root_comments, replies, Comment},
-        pages::{create_or_find_by_site_and_path, find_by_site_and_path},
-        sites::Site,
+        comments::{Comment, self},
+        pages::{Page, self},
+        sites::{Site, self},
     },
 };
 use axum::{extract::Path, routing::post, Json, Router};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::query_as;
+use sqlx::SqlitePool;
 
-use super::{ApiRequest, Cursor, Error};
+use super::{User, Base64, generate_random_token};
 
 pub fn router() -> Router {
     Router::new()
-        .route("/api/comments", post(comments))
-        .route("/api/comment", post(post_comment))
-        .route("/api/thread/:comment_id", post(thread))
+        .route("/api/comments", post(index))
+        .route("/api/comments/:comment_id", post(thread))
+        .route("/api/comment", post(create))
+        .route(
+            "/api/comment/:comment_id",
+            post(reply)
+                .patch(approve)
+                // .delete(destroy)
+                // .put(update)
+        )
 }
 
 #[derive(Serialize)]
@@ -27,7 +34,6 @@ struct CommentWithReplies {
     body: String,
     avatar: Option<String>,
     replies_count: i64,
-    locked: bool,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     thread: Thread,
@@ -48,8 +54,9 @@ struct CommentsPage {
 
 #[derive(Deserialize)]
 struct CommentData {
-    name: Option<String>,
     body: String,
+    name: Option<String>,
+    sid: Option<Base64>,
 }
 
 fn comments_page(
@@ -104,7 +111,6 @@ fn comments_page(
             body: parent.body,
             avatar: parent.avatar,
             replies_count: parent.replies_count,
-            locked: parent.locked,
             created_at: parent.created_at,
             updated_at: parent.updated_at,
             thread: Thread { replies, cursor },
@@ -131,22 +137,38 @@ fn comments_page(
     }
 }
 
+fn verify_read_permission(site: &Site, user: &Option<User>, page: Option<&Page>) -> Result<()> {
+    if site.private && user.is_none() { return Err(Error::Unauthorized) }
+
+    if let Some(p) = page {
+        if p.site != site.site { return Err(Error::BadRequest("Wrong site requested")) }
+    }
+
+    Ok(())
+}
+
+async fn comment_and_page(ctx: &Context, comment_id: i64) -> Result<(Comment, Page)> {
+    let comment = comments::find_root(&ctx.db, comment_id).await?;
+    let page_id = comment.page_id;
+    Ok((comment, pages::find(&ctx.db, page_id).await?))
+}
+
 /// POST /api/comments
-async fn comments(
+async fn index(
     ctx: Context,
     cursor: Option<Cursor>,
     Json(req): Json<ApiRequest<()>>,
 ) -> Result<Json<CommentsPage>> {
     let (site, user) = req.extract_verified(&ctx.db).await?;
 
-    if site.private && user.is_none() { return Err(Error::Unauthorized) }
+    verify_read_permission(&site, &user, None)?;
 
-    let page = find_by_site_and_path(&ctx.db, &req.site, &req.path).await?;
+    let page = pages::find_by_site_and_path(&ctx.db, &req.site, &req.path).await?;
 
     // We need the fetch limit + 1 in order
     // to work out if there is a next page or not
-    let parents = root_comments(&ctx.db, page.id, site.comments_per_page + 1, cursor).await?;
-    let replies = nested_replies(&ctx.db, site.replies_per_comment + 1, &parents).await?;
+    let parents = comments::root_comments(&ctx.db, page.id, site.comments_per_page + 1, cursor).await?;
+    let replies = comments::nested_replies(&ctx.db, site.replies_per_comment + 1, &parents).await?;
 
     Ok(Json(comments_page(
         parents,
@@ -164,10 +186,10 @@ async fn thread(
     Json(req): Json<ApiRequest<()>>,
 ) -> Result<Json<Thread>> {
     let (site, user) = req.extract_verified(&ctx.db).await?;
+    let (_, page) = comment_and_page(&ctx, comment_id).await?;
+    verify_read_permission(&site, &user, Some(&page))?;
 
-    if site.private && user.is_none() { return Err(Error::Unauthorized) }
-
-    let all_replies = replies(&ctx.db, comment_id, site.replies_per_comment + 1, cursor).await?;
+    let all_replies = comments::replies(&ctx.db, comment_id, site.replies_per_comment + 1, cursor).await?;
 
     let replies_len = all_replies.len() as i64;
     let mut replies = vec![];
@@ -199,36 +221,53 @@ async fn thread(
 
 #[derive(Serialize)]
 struct PostCommentResponse {
-    sid: String,
+    token: Base64,
     comment: Comment,
 }
 /// POST /api/comment
-async fn post_comment(
+async fn create(
     ctx: Context,
     Json(req): Json<ApiRequest<CommentData>>,
+) -> Result<Json<PostCommentResponse>> {
+    Ok(post_comment(&ctx.db, req, None).await?)
+}
+
+/// POST /api/comment/42
+async fn reply(
+    ctx: Context,
+    Path(comment_id): Path<i64>,
+    Json(req): Json<ApiRequest<CommentData>>,
+) -> Result<Json<PostCommentResponse>> {
+    Ok(post_comment(&ctx.db, req, Some(comment_id)).await?)
+}
+
+fn authorize_posting(site: &Site, user: &Option<User>, page: &Page) -> Result<()> {
+    verify_read_permission(site, user, Some(page))?;
+    if user.is_none() && !site.anonymous { return Err(Error::Unauthorized) }
+    if page.locked { return Err(Error::Forbidden) }
+    Ok(())
+}
+
+async fn post_comment(
+    db: &SqlitePool,
+    req: ApiRequest<CommentData>,
+    parent_id: Option<i64>
 ) -> Result<Json<PostCommentResponse>> {
     match req.payload {
         None => Err(Error::unprocessable_entity([("payload", "can't be blank")])),
         Some(ref data) => {
             if data.body.len() < 1 { return Err(Error::unprocessable_entity([("body", "can't be blank")])) }
 
-            let (site, user) = req.extract_verified(&ctx.db).await?;
+            let (site, user) = req.extract_verified(db).await?;
+            let page = match parent_id {
+                None => pages::create_or_find_by_site_and_path(db, &req.site, &req.path).await?,
+                Some(pid) => {
+                    let parent = comments::find_root(db, pid).await?;
+                    pages::find(db, parent.page_id).await?
+                }
+            };
 
-            let requires_user = site.private || !site.anonymous;
-
-            if requires_user && user.is_none() { return Err(Error::Unauthorized) }
-
-            let page = create_or_find_by_site_and_path(&ctx.db, &req.site, &req.path).await?;
-
-            if page.locked { return Err(Error::Forbidden) }
-
-            let mut q = String::from("INSERT INTO comments (page_id, name, body, avatar");
-            let mut v = String::from(" VALUES (?, ?, ?, ?");
-
-            if !site.moderated {
-                q.push_str(", reviewed_at");
-                v.push_str(", ?");
-            }
+            authorize_posting(&site, &user, &page)?;
 
             let anon = String::from("Anonymous");
             let (name, avatar) = user
@@ -237,30 +276,69 @@ async fn post_comment(
                     (&c.name, c.avatar.as_ref())
                 });
 
-            v.push_str(")");
-            q.push_str(")");
-            q.push_str(&v);
-            q.push_str(" RETURNING *");
+            let reviewed_at = !site.moderated || (user.is_some() && user.as_ref().unwrap().moderator);
 
-            let mut insert = query_as::<_, Comment>(&q)
-                .bind(&page.id)
-                .bind(name)
-                .bind(&data.body)
-                .bind(avatar);
-
-            if !site.moderated { insert = insert.bind(Utc::now()) }
-
-            let mut tx = ctx.db.begin().await?;
-
-            let comment = insert.fetch_one(&mut tx).await?;
-
-            tx.commit().await?;
-
-            let sid = base64::encode(&comment.sid);
+            let comment = comments::create(
+                db, page.id, parent_id, &name, &data.body, &avatar,
+                reviewed_at, data.sid.as_ref().unwrap_or(&generate_random_token())
+            ).await?;
 
             Ok(Json({
-                PostCommentResponse { sid, comment }
+                PostCommentResponse { token: comment.token.clone(), comment }
             }))
         }
     }
 }
+
+fn require_moderator(user: &Option<User>) -> Result<()> {
+    match user {
+        None => return Err(Error::Unauthorized),
+        Some(u) => if !u.moderator { return Err(Error::Forbidden) }
+    };
+    Ok(())
+}
+
+/// PATCH /api/comment/42
+async fn approve(
+    ctx: Context,
+    Path(comment_id): Path<i64>,
+    Json(req): Json<ApiRequest<()>>,
+) -> Result<String> {
+    let (_, user) = req.extract_verified(&ctx.db).await?;
+    require_moderator(&user)?;
+
+    comments::approve(&ctx.db, comment_id).await?;
+
+    Ok("Success".to_string())
+}
+
+// fn modifiable(user: Option<&User>, sid: Option<&Base64>, cResult<_, _> {omment_sid: &Base64) -> bool {
+//     match user {
+//         Some(u) if u.moderator => true,
+//         _ => match sid {
+//             None => false,
+//             Some(s) => s == comment_sid,
+//         }
+//     }
+// }
+
+// #[derive(Serialize)]
+// struct DeleteCommentData { sid: Option<Base64> }
+// /// DELETE /api/comment/42
+// async fn destroy(
+//     ctx: Context,
+//     Path(comment_id): Path<i64>,
+//     Json(req): Json<ApiRequest<DeleteCommentData>>,
+// ) -> Result<String> {
+//     let comment = find(&ctx.db, comment_id).await?;
+
+//     let (_, user) = req.extract_verified(&ctx.db).await?;
+
+//     if !modifiable(user.as_ref(), req.payload.as_ref().and_then(|p| p.sid.as_ref()), &comment.sid) { return Err(Error::Forbidden) }
+
+//     let _payload = &req.payload;
+
+//     let _ = comments::delete(&ctx.db, comment_id).await?;
+//     Ok("Success".to_string())
+// }
+

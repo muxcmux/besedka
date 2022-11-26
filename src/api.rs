@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use axum::Extension;
 use chrono::{DateTime, Utc};
-use ring::hmac;
+use ring::{hmac, rand::{SecureRandom, SystemRandom}};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use sqlx::SqlitePool;
 
@@ -60,8 +60,14 @@ struct ApiRequest<T> {
     payload: Option<T>
 }
 
-#[derive(Debug)]
-struct Base64(Vec<u8>);
+#[derive(Clone, Debug, sqlx::Type, PartialEq)]
+#[sqlx(transparent)]
+pub struct Base64(Vec<u8>);
+
+impl Into<String> for Base64 {
+    fn into(self) -> String { base64::encode(self.0) }
+}
+
 impl Serialize for Base64 {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.collect_str(&base64::display::Base64Display::with_config(
@@ -99,7 +105,7 @@ impl<T> ApiRequest<T> {
             .map_err(|_| Error::BadRequest("No configuration found for requested site"))?;
 
         // logged in moderators always take precedence over 3rd party users
-        if let Some(Base64(ref sid)) = self.sid {
+        if let Some(ref sid) = self.sid {
             match find_by_sid(db, sid).await {
                 Err(_) => return Err(Error::Unauthorized),
                 Ok(moderator) => return Ok((site, Some(User::from_moderator(moderator)))),
@@ -121,4 +127,11 @@ impl<T> ApiRequest<T> {
 
         Ok((site, user))
     }
+}
+
+pub fn generate_random_token() -> Base64 {
+    let mut sid = [0_u8; 48];
+    let rg = SystemRandom::new();
+    let _ = rg.fill(&mut sid);
+    Base64(sid.to_vec())
 }
