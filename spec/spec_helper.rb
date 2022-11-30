@@ -43,7 +43,7 @@ RSpec.configure do |config|
   end
 
   config.before(:example) do
-    runner.start debug: false
+    runner.start print_to_stdout: false
   end
 
   config.after(:example) do
