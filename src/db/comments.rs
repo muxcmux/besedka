@@ -233,7 +233,7 @@ pub async fn replies(
         }
     }
 
-    let query = match cursor {
+    let mut query = match cursor {
         Some(cur) => {
             query_as::<_, Comment>(
                 r#"
@@ -241,8 +241,8 @@ pub async fn replies(
                     reviewed, created_at, updated_at, token
                     FROM comments
                     WHERE parent_id = ?
-                    AND reviewed = 1
                     AND (created_at > ? OR (created_at = ? AND id > ?))
+                    {condition}
                     ORDER BY created_at, id
                     LIMIT ?
                  "#,
@@ -251,7 +251,6 @@ pub async fn replies(
              .bind(format!("{}", cur.created_at.format(UTC_DATETIME_FORMAT)))
              .bind(format!("{}", cur.created_at.format(UTC_DATETIME_FORMAT)))
              .bind(cur.id)
-             .bind(limit)
         },
         None => {
             query_as::<_, Comment>(
@@ -260,17 +259,20 @@ pub async fn replies(
                     reviewed, created_at, updated_at, token
                     FROM comments
                     WHERE parent_id = ?
-                    AND reviewed = 1
+                    {condition}
                     ORDER BY created_at, id
                     LIMIT ?
                 "#,
             )
             .bind(parent_id)
-            .bind(limit)
         }
     };
 
-    Ok(query.fetch_all(db).await?)
+    if reviewed_only {
+        if let Some(t) = token { query = query.bind(t) }
+    }
+
+    Ok(query.bind(limit).fetch_all(db).await?)
 }
 
 pub async fn create(

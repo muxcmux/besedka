@@ -50,7 +50,7 @@ RSpec.describe 'Multiple pages of comments' do
       hash_including(
         comments: [
           hash_including(id: 5, name: 'Anonymous', body: 'hello world 4', thread: { cursor: nil, replies: [] }),
-          hash_including(id: 4, name: 'Anonymous', body: 'hello world 3', thread: { cursor: nil, replies: [] }),
+          hash_including(id: 4, name: 'Anonymous', body: 'hello world 3', thread: { cursor: nil, replies: [] })
         ],
         total: 5
       )
@@ -64,7 +64,7 @@ RSpec.describe 'Multiple pages of comments' do
       hash_including(
         comments: [
           hash_including(id: 3, name: 'Anonymous', body: 'hello world 2', thread: { cursor: nil, replies: [] }),
-          hash_including(id: 2, name: 'Anonymous', body: 'hello world 1', thread: { cursor: nil, replies: [] }),
+          hash_including(id: 2, name: 'Anonymous', body: 'hello world 1', thread: { cursor: nil, replies: [] })
         ],
         total: 5
       )
@@ -77,7 +77,7 @@ RSpec.describe 'Multiple pages of comments' do
     expect(third_page).to match(
       hash_including(
         comments: [
-          hash_including(id: 1, name: 'Anonymous', body: 'hello world 0', thread: { cursor: nil, replies: [] }),
+          hash_including(id: 1, name: 'Anonymous', body: 'hello world 0', thread: { cursor: nil, replies: [] })
         ],
         cursor: nil,
         total: 5
@@ -113,7 +113,7 @@ RSpec.describe 'Two pages of comments and a thread' do
       hash_including(
         comments: [
           hash_including(id: 8, name: 'Anonymous', body: 'hello world 4', thread: { cursor: nil, replies: [] }),
-          hash_including(id: 7, name: 'Anonymous', body: 'hello world 3', thread: { cursor: nil, replies: [] }),
+          hash_including(id: 7, name: 'Anonymous', body: 'hello world 3', thread: { cursor: nil, replies: [] })
         ],
         total: 8
       )
@@ -130,7 +130,7 @@ RSpec.describe 'Two pages of comments and a thread' do
               hash_including(id: 5, name: 'Anonymous', body: 'Reply 1')
             ])
           ),
-          hash_including(id: 2, name: 'Anonymous', body: 'hello world 1', thread: { cursor: nil, replies: [] }),
+          hash_including(id: 2, name: 'Anonymous', body: 'hello world 1', thread: { cursor: nil, replies: [] })
         ],
         total: 8
       )
@@ -144,7 +144,7 @@ RSpec.describe 'Two pages of comments and a thread' do
         replies: [
           hash_including(id: 4, name: 'Anonymous', body: 'Reply 0'),
           hash_including(id: 5, name: 'Anonymous', body: 'Reply 1')
-        ],
+        ]
       )
     )
     expect(thread[:cursor]).to_not be_nil
@@ -177,7 +177,7 @@ RSpec.describe 'Listing comments from protected site' do
 
     expect(response).to match(
       comments: [
-        hash_including(id: 1, name: 'some user', body: 'comment'),
+        hash_including(id: 1, name: 'some user', body: 'comment')
       ],
       total: 1,
       cursor: nil
@@ -312,7 +312,7 @@ RSpec.describe 'Filtering comments' do
                 cursor: nil,
                 replies: [
                   hash_including(id: 4, name: 'moderator', body: 'Reviewed reply', reviewed: true),
-                  hash_including(id: 6, name: 'Anonymous', body: 'Another unreviewed reply', reviewed: false),
+                  hash_including(id: 6, name: 'Anonymous', body: 'Another unreviewed reply', reviewed: false)
                 ]
               })
             ],
