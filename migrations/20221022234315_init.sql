@@ -27,7 +27,6 @@ CREATE TABLE pages (
   id             INTEGER NOT NULL PRIMARY KEY,
   site           VARCHAR NOT NULL,
   path           VARCHAR NOT NULL,
-  comments_count INTEGER NOT NULL DEFAULT 0,
   locked         BOOLEAN NOT NULL DEFAULT 0,
   UNIQUE(site, path)
 );
@@ -45,7 +44,6 @@ CREATE TABLE comments (
   name          VARCHAR NOT NULL DEFAULT Anonymous,
   body          VARCHAR NOT NULL,
   avatar        TEXT,
-  replies_count INTEGER NOT NULL DEFAULT 0,
   reviewed      BOOLEAN NOT NULL DEFAULT 0,
   created_at    DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updated_at    DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
@@ -53,4 +51,5 @@ CREATE TABLE comments (
 );
 
 CREATE INDEX idx_comments_path      ON comments(page_id);
+CREATE INDEX idx_comments_token     ON comments(token);
 CREATE INDEX idx_comments_parent_id ON comments(parent_id);

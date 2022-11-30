@@ -8,6 +8,7 @@ module Utils
   end
 
   def sign(data, secret)
+    data = data.to_json
     secret_bytes = Base64.strict_decode64(secret)
     digest = OpenSSL::Digest.new('sha256')
     signature = Base64.strict_encode64(OpenSSL::HMAC.digest(digest, secret_bytes, data))

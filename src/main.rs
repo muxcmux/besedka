@@ -25,7 +25,7 @@ async fn main() -> anyhow::Result<()> {
     match args.command {
         cli::Commands::Server(config) => server::run(config, db).await?,
         cli::Commands::Sites(config) => match config {
-            cli::SitesCommands::List  => cli::sites::list(&db).await,
+            cli::SitesCommands::List => cli::sites::list(&db).await,
             cli::SitesCommands::Get { site } => cli::sites::print(&db, &site).await,
             cli::SitesCommands::Add(args) => cli::sites::create(&db, args).await,
             cli::SitesCommands::Update(args) => cli::sites::update(&db, args).await,

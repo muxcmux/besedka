@@ -33,9 +33,9 @@ struct CommentWithReplies {
     name: String,
     body: String,
     avatar: Option<String>,
-    replies_count: i64,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
+    reviewed: bool,
     thread: Thread,
 }
 
@@ -110,9 +110,9 @@ fn comments_page(
             name: parent.name,
             body: parent.body,
             avatar: parent.avatar,
-            replies_count: parent.replies_count,
             created_at: parent.created_at,
             updated_at: parent.updated_at,
+            reviewed: parent.reviewed,
             thread: Thread { replies, cursor },
         });
         count += 1;
@@ -153,11 +153,16 @@ async fn comment_and_page(ctx: &Context, comment_id: i64) -> Result<(Comment, Pa
     Ok((comment, pages::find(&ctx.db, page_id).await?))
 }
 
+#[derive(Deserialize)]
+struct ListCommentsRequest {
+    token: Option<Base64>
+}
+
 /// POST /api/comments
 async fn index(
     ctx: Context,
     cursor: Option<Cursor>,
-    Json(req): Json<ApiRequest<()>>,
+    Json(req): Json<ApiRequest<ListCommentsRequest>>,
 ) -> Result<Json<CommentsPage>> {
     let (site, user) = req.extract_verified(&ctx.db).await?;
 
@@ -165,15 +170,32 @@ async fn index(
 
     let page = pages::find_by_site_and_path(&ctx.db, &req.site, &req.path).await?;
 
+    let show_only_reviewed = user
+        .as_ref()
+        .map_or(true, |u| !u.moderator);
     // We need the fetch limit + 1 in order
     // to work out if there is a next page or not
-    let parents = comments::root_comments(&ctx.db, page.id, site.comments_per_page + 1, cursor).await?;
-    let replies = comments::nested_replies(&ctx.db, site.replies_per_comment + 1, &parents).await?;
+    let (total, parents) = comments::root_comments(
+        &ctx.db,
+        page.id,
+        site.comments_per_page + 1,
+        show_only_reviewed,
+        req.payload.as_ref().map_or(&None, |p| &p.token),
+        cursor
+    ).await?;
+
+    let replies = comments::nested_replies(
+        &ctx.db,
+        site.replies_per_comment + 1,
+        show_only_reviewed,
+        req.payload.as_ref().map_or(&None, |p| &p.token),
+        &parents
+    ).await?;
 
     Ok(Json(comments_page(
         parents,
         replies,
-        page.comments_count,
+        total,
         site,
     )))
 }
@@ -183,13 +205,24 @@ async fn thread(
     ctx: Context,
     cursor: Option<Cursor>,
     Path(comment_id): Path<i64>,
-    Json(req): Json<ApiRequest<()>>,
+    Json(req): Json<ApiRequest<ListCommentsRequest>>,
 ) -> Result<Json<Thread>> {
     let (site, user) = req.extract_verified(&ctx.db).await?;
     let (_, page) = comment_and_page(&ctx, comment_id).await?;
     verify_read_permission(&site, &user, Some(&page))?;
 
-    let all_replies = comments::replies(&ctx.db, comment_id, site.replies_per_comment + 1, cursor).await?;
+    let show_only_reviewed = user
+        .as_ref()
+        .map_or(true, |u| !u.moderator);
+
+    let all_replies = comments::replies(
+        &ctx.db,
+        comment_id,
+        site.replies_per_comment + 1,
+        cursor,
+        show_only_reviewed,
+        req.payload.as_ref().map_or(&None, |p| &p.token),
+    ).await?;
 
     let replies_len = all_replies.len() as i64;
     let mut replies = vec![];

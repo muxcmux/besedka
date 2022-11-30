@@ -18,7 +18,7 @@ pub type Context = Extension<Arc<AppContext>>;
 
 pub use error::Error;
 
-use crate::db::{sites::{find, Site}, moderators::{Moderator, find_by_sid}};
+use crate::db::{sites::{Site, self}, moderators::{Moderator, self}};
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -101,12 +101,12 @@ impl<T> ApiRequest<T> {
     /// by a sid, or a signed 3rd party user
     async fn extract_verified(&self, db: &SqlitePool) -> Result<(Site, Option<User>)> {
         // Fail if there's no config for the requested site
-        let site = find(db, &self.site).await
+        let site = sites::find(db, &self.site).await
             .map_err(|_| Error::BadRequest("No configuration found for requested site"))?;
 
         // logged in moderators always take precedence over 3rd party users
         if let Some(ref sid) = self.sid {
-            match find_by_sid(db, sid).await {
+            match moderators::find_by_sid(db, sid).await {
                 Err(_) => return Err(Error::Unauthorized),
                 Ok(moderator) => return Ok((site, Some(User::from_moderator(moderator)))),
             }
