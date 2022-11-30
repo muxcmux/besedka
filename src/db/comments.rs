@@ -233,9 +233,11 @@ pub async fn replies(
         }
     }
 
+    let mut _q = String::from("");
+
     let mut query = match cursor {
         Some(cur) => {
-            query_as::<_, Comment>(
+            _q = format!(
                 r#"
                     SELECT id, page_id, parent_id, name, body, avatar,
                     reviewed, created_at, updated_at, token
@@ -245,16 +247,18 @@ pub async fn replies(
                     {condition}
                     ORDER BY created_at, id
                     LIMIT ?
-                 "#,
-             )
-             .bind(parent_id)
-             .bind(format!("{}", cur.created_at.format(UTC_DATETIME_FORMAT)))
-             .bind(format!("{}", cur.created_at.format(UTC_DATETIME_FORMAT)))
-             .bind(cur.id)
+                "#,
+                condition = condition
+            );
+            query_as::<_, Comment>(&_q)
+                .bind(parent_id)
+                .bind(format!("{}", cur.created_at.format(UTC_DATETIME_FORMAT)))
+                .bind(format!("{}", cur.created_at.format(UTC_DATETIME_FORMAT)))
+                .bind(cur.id)
         },
         None => {
-            query_as::<_, Comment>(
-               r#"
+            _q = format!(
+                r#"
                     SELECT id, page_id, parent_id, name, body, avatar,
                     reviewed, created_at, updated_at, token
                     FROM comments
@@ -263,8 +267,10 @@ pub async fn replies(
                     ORDER BY created_at, id
                     LIMIT ?
                 "#,
-            )
-            .bind(parent_id)
+                condition = condition
+            );
+            query_as::<_, Comment>(&_q)
+                .bind(parent_id)
         }
     };
 

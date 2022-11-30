@@ -349,3 +349,91 @@ RSpec.describe 'Filtering comments' do
     end
   end
 end
+
+RSpec.describe 'Listing replies from protected site' do
+  before do
+    secret = add_site('test', private: true, anonymous: true, moderated: false)
+    @user, @signature = sign({ name: 'some user', moderator: false }, secret)
+
+    post(
+      '/api/comment',
+      { site: 'test', path: '/', user: @user, signature: @signature, payload: { body: 'comment' } }
+    )
+
+    post(
+      '/api/comment/1',
+      { site: 'test', path: '/', user: @user, signature: @signature, payload: { body: 'reply' } }
+    )
+  end
+
+  it 'displays the replies to a signed user' do
+    response = JSON.parse(post("/api/comments/1", { site: 'test', path: '/', user: @user, signature: @signature }).body, symbolize_names: true)
+
+    expect(response).to match(
+      replies: [
+        hash_including(id: 2, name: 'some user', body: 'reply')
+      ],
+      cursor: nil
+    )
+  end
+
+  it 'does not display comments to non signed user' do
+    response = post("/api/comments/1", { site: 'test', path: '/' })
+    expect(response.status).to eq 401
+  end
+end
+
+# RSpec.describe 'Multiple pages of replies' do
+#   before do
+#     add_site('test', private: false, anonymous: true, moderated: false, comments_per_page: 2)
+#
+#     5.times do |i|
+#       post(
+#         '/api/comment',
+#         { site: 'test', path: '/', payload: { body: "hello world #{i}" } }
+#       )
+#     end
+#   end
+#
+#   it 'displays a pages of comments with the newest on top and a links to the next page' do
+#     response = get_comments
+#
+#     expect(response).to match(
+#       hash_including(
+#         comments: [
+#           hash_including(id: 5, name: 'Anonymous', body: 'hello world 4', thread: { cursor: nil, replies: [] }),
+#           hash_including(id: 4, name: 'Anonymous', body: 'hello world 3', thread: { cursor: nil, replies: [] })
+#         ],
+#         total: 5
+#       )
+#     )
+#
+#     expect(response[:cursor]).to_not be_nil
+#
+#     second_page = JSON.parse(post("/api/comments?cursor=#{response[:cursor]}", { site: 'test', path: '/' }).body, symbolize_names: true)
+#
+#     expect(second_page).to match(
+#       hash_including(
+#         comments: [
+#           hash_including(id: 3, name: 'Anonymous', body: 'hello world 2', thread: { cursor: nil, replies: [] }),
+#           hash_including(id: 2, name: 'Anonymous', body: 'hello world 1', thread: { cursor: nil, replies: [] })
+#         ],
+#         total: 5
+#       )
+#     )
+#
+#     expect(second_page[:cursor]).to_not be_nil
+#
+#     third_page = JSON.parse(post("/api/comments?cursor=#{second_page[:cursor]}", { site: 'test', path: '/' }).body, symbolize_names: true)
+#
+#     expect(third_page).to match(
+#       hash_including(
+#         comments: [
+#           hash_including(id: 1, name: 'Anonymous', body: 'hello world 0', thread: { cursor: nil, replies: [] })
+#         ],
+#         cursor: nil,
+#         total: 5
+#       )
+#     )
+#   end
+# end
