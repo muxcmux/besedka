@@ -2,10 +2,6 @@ def get_comments
   JSON.parse(post('/api/comments', { site: 'test', path: '/' }).body, symbolize_names: true)
 end
 
-def get_replies
-  JSON.parse(post('/api/comments/1', { site: 'test', path: '/' }).body, symbolize_names: true)
-end
-
 RSpec.describe 'Single page of comments' do
   before do
     add_site('test', private: false, anonymous: true, moderated: false)
@@ -354,88 +350,3 @@ RSpec.describe 'Filtering comments' do
   end
 end
 
-RSpec.describe 'Listing replies from protected site' do
-  before do
-    secret = add_site('test', private: true, anonymous: true, moderated: false)
-    @user, @signature = sign({ name: 'some user', moderator: false }, secret)
-
-    post(
-      '/api/comment',
-      { site: 'test', path: '/', user: @user, signature: @signature, payload: { body: 'comment' } }
-    )
-
-    post(
-      '/api/comment/1',
-      { site: 'test', path: '/', user: @user, signature: @signature, payload: { body: 'reply' } }
-    )
-  end
-
-  it 'displays the replies to a signed user' do
-    response = JSON.parse(post("/api/comments/1", { site: 'test', path: '/', user: @user, signature: @signature }).body, symbolize_names: true)
-
-    expect(response).to match(
-      replies: [
-        hash_including(id: 2, name: 'some user', body: 'reply')
-      ],
-      cursor: nil
-    )
-  end
-
-  it 'does not display comments to non signed user' do
-    response = post("/api/comments/1", { site: 'test', path: '/' })
-    expect(response.status).to eq 401
-  end
-end
-
-RSpec.describe 'Multiple pages of replies' do
-  before do
-    add_site('test', private: false, anonymous: true, moderated: false, replies_per_comment: 2)
-
-    post('/api/comment', { site: 'test', path: '/', payload: { body: "hello world" } })
-    5.times do |i|
-      post(
-        '/api/comment/1',
-        { site: 'test', path: '/', payload: { body: "hello reply #{i}" } }
-      )
-    end
-  end
-
-  it 'displays a pages of replies with the oldest first and a link to the next page' do
-    response = get_replies
-
-    expect(response).to match(
-      hash_including(
-        replies: [
-          hash_including(id: 2, name: 'Anonymous', body: 'hello reply 0'),
-          hash_including(id: 3, name: 'Anonymous', body: 'hello reply 1')
-        ]
-      )
-    )
-
-    expect(response[:cursor]).to_not be_nil
-
-    second_page = JSON.parse(post("/api/comments/1?cursor=#{response[:cursor]}", { site: 'test', path: '/' }).body, symbolize_names: true)
-
-    expect(second_page).to match(
-      hash_including(
-        replies: [
-          hash_including(id: 4, name: 'Anonymous', body: 'hello reply 2'),
-          hash_including(id: 5, name: 'Anonymous', body: 'hello reply 3')
-        ]
-      )
-    )
-
-    expect(second_page[:cursor]).to_not be_nil
-
-    third_page = JSON.parse(post("/api/comments/1?cursor=#{second_page[:cursor]}", { site: 'test', path: '/' }).body, symbolize_names: true)
-
-    expect(third_page).to match(
-      hash_including(
-        replies: [
-          hash_including(id: 6, name: 'Anonymous', body: 'hello reply 4')
-        ],
-        cursor: nil
-      )
-    )
-  end
-end
