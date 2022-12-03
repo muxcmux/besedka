@@ -199,6 +199,15 @@ RSpec.describe 'Requesting comments for a site which does not exist' do
   end
 end
 
+RSpec.describe 'Requesting comments for a page that does not exist' do
+  it 'returns not found' do
+    add_site('test', private: false, anonymous: true, moderated: false)
+    response = post("/api/comments", { site: 'test', path: '/blog' })
+    expect(response.status).to eq 404
+    expect(response.body).to match(/Resource not found/)
+  end
+end
+
 RSpec.describe 'Filtering comments' do
   let(:site) { add_site('test', private: false, anonymous: true, moderated: true) }
   let(:s) { sign({ name: 'moderator', moderator: true }, site) }
@@ -213,6 +222,8 @@ RSpec.describe 'Filtering comments' do
     post('/api/comment', { site: 'test', path: '/', user: s.first, signature: s.last, payload: { body: 'Reviewed comment' } })
     post('/api/comment', { site: 'test', path: '/', payload: { body: 'Unreviewed comment' } })
     token
+
+    post('/api/comment', { site: 'test', path: '/blog', user: s.first, signature: s.last, payload: { body: 'Reviewed blog comment' } })
   end
 
   context 'without token' do
@@ -267,7 +278,7 @@ RSpec.describe 'Filtering comments' do
     end
   end
 
-  context 'nested replies' do
+  context 'with nested replies' do
     let(:reply_token) do
       JSON.parse(
         post('/api/comment/1', { site: 'test', path: '/', payload: { body: 'Another unreviewed reply' } }).body,
@@ -288,7 +299,7 @@ RSpec.describe 'Filtering comments' do
               hash_including(id: 1, name: 'moderator', body: 'Reviewed comment', reviewed: true, thread: {
                 cursor: nil,
                 replies: [
-                  hash_including(id: 4, name: 'moderator', body: 'Reviewed reply', reviewed: true)
+                  hash_including(id: 5, name: 'moderator', body: 'Reviewed reply', reviewed: true)
                 ]
               })
             ],
@@ -311,8 +322,8 @@ RSpec.describe 'Filtering comments' do
               hash_including(id: 1, name: 'moderator', body: 'Reviewed comment', reviewed: true, thread: {
                 cursor: nil,
                 replies: [
-                  hash_including(id: 4, name: 'moderator', body: 'Reviewed reply', reviewed: true),
-                  hash_including(id: 6, name: 'Anonymous', body: 'Another unreviewed reply', reviewed: false)
+                  hash_including(id: 5, name: 'moderator', body: 'Reviewed reply', reviewed: true),
+                  hash_including(id: 7, name: 'Anonymous', body: 'Another unreviewed reply', reviewed: false)
                 ]
               })
             ],
@@ -337,8 +348,8 @@ RSpec.describe 'Filtering comments' do
               hash_including(id: 1, name: 'moderator', body: 'Reviewed comment', reviewed: true, thread: {
                 cursor: nil,
                 replies: [
-                  hash_including(id: 4, name: 'moderator', body: 'Reviewed reply', reviewed: true),
-                  hash_including(id: 5, name: 'Anonymous', body: 'Unreviewed reply', reviewed: false)
+                  hash_including(id: 5, name: 'moderator', body: 'Reviewed reply', reviewed: true),
+                  hash_including(id: 6, name: 'Anonymous', body: 'Unreviewed reply', reviewed: false)
                 ]
               })
             ],

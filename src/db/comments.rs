@@ -40,16 +40,16 @@ pub async fn find(db: &SqlitePool, id: i64) -> sqlx::Result<Comment> {
     )
 }
 
-pub async fn approve(db: &SqlitePool, id: i64) -> sqlx::Result<Comment> {
+pub async fn approve(db: &SqlitePool, id: i64) -> sqlx::Result<()> {
     let mut tx = db.begin().await?;
 
-    let comment = query_as::<_, Comment>(
-        "UPDATE comments SET reviewed = 1 WHERE id = ? AND reviewed = 0 RETURNING * "
-    ).bind(id).fetch_one(&mut tx).await?;
+    let _ = query(
+        "UPDATE comments SET reviewed = 1 WHERE id = ? AND reviewed = 0"
+    ).bind(id).execute(&mut tx).await?;
 
     tx.commit().await?;
 
-    Ok(comment)
+    Ok(())
 }
 
 pub async fn delete(db: &SqlitePool, id: i64) -> sqlx::Result<sqlx::sqlite::SqliteQueryResult> {
