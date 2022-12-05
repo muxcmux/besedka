@@ -25,7 +25,17 @@ RSpec.describe 'Single page of comments' do
           hash_including(id: 1, name: 'Anonymous', body: 'hello world 0', thread: { cursor: nil, replies: [] })
         ],
         cursor: nil,
-        total: 5
+        total: 5,
+        site: {
+          site: 'test',
+          private: false,
+          anonymous: true,
+          moderated: false,
+          comments_per_page: 25,
+          replies_per_comment: 5,
+          minutes_to_edit: 3,
+          theme: 'day_and_night'
+        }
       )
     )
   end
@@ -176,11 +186,13 @@ RSpec.describe 'Listing comments from protected site' do
     response = JSON.parse(post("/api/comments", { site: 'test', path: '/', user: @user, signature: @signature }).body, symbolize_names: true)
 
     expect(response).to match(
-      comments: [
-        hash_including(id: 1, name: 'some user', body: 'comment')
-      ],
-      total: 1,
-      cursor: nil
+      hash_including(
+        comments: [
+          hash_including(id: 1, name: 'some user', body: 'comment')
+        ],
+        total: 1,
+        cursor: nil
+      )
     )
   end
 
@@ -360,4 +372,3 @@ RSpec.describe 'Filtering comments' do
     end
   end
 end
-

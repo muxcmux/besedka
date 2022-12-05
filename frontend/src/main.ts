@@ -1,22 +1,33 @@
 import App from './app'
-import {ConfigRequest} from './types'
+import {ApiRequest, User} from './types'
+import { safeParse } from './utils'
+
 
 document.addEventListener('DOMContentLoaded', () => {
   const container = document.getElementById('besedka')
 
   if (container) {
     const configContainer = document.getElementById('besedka-config')
+    const userContainer = document.getElementById('besedka-user')
+
     let config = configContainer?.innerText
+    let user = userContainer?.innerText
+
+    let { site, path } = safeParse(user)
+    let userObject: User = safeParse(user)
+
     if (config) config = btoa(config)
+    if (user) user = btoa(user)
+
     let signature = configContainer?.dataset?.signature
 
-    const cfg: ConfigRequest = {
-      site: window.location.hostname,
-      path: window.location.pathname,
-      config,
+    const req: ApiRequest = {
+      site: site || window.location.hostname,
+      path: path || window.location.pathname,
+      user,
       signature
     }
 
-    new App(container, cfg)
+    new App(container, req, userObject)
   }
 })

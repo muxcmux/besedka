@@ -1,51 +1,62 @@
 export interface Thread {
-  cursor?: string;
-  replies: Comment[];
+  cursor?: string
+  replies: Comment[]
 }
 
 export interface Comment {
-  id: number;
-  parent_id?: number;
-  name: string;
-  body: string;
-  avatar?: string;
-  replies_count: number;
-  locked: boolean;
-  created_at: Date;
-  updated_at: Date;
-  thread: Thread;
+  id: number
+  parent_id?: number
+  name: string
+  body: string
+  avatar?: string
+  locked: boolean
+  reviewed: boolean
+  created_at: Date
+  updated_at: Date
+  thread: Thread
+  token: string
 }
 
-export interface Comments {
-  total: number;
-  cursor?: string;
-  comments: Comment[];
+export interface CommentsResponse {
+  total: number
+  cursor?: string
+  comments: Comment[]
+  site: Config
+}
+
+export interface ApiRequest {
+  site: string
+  path: string
+  user?: string
+  signature?: string
+  sid?: string
 }
 
 export interface Config {
-  site: string,
-  path: string,
-  private?: boolean,
-  anonymous?: boolean,
-  moderated?: boolean,
-  comments_per_page?: number,
-  replies_per_comment?: number,
-  minutes_to_edit?: number,
-  theme?: string,
-  user?: User
+  private: boolean
+  anonymous: boolean
+  moderated: boolean
+  comments_per_page: number
+  replies_per_comment: number
+  minutes_to_edit: number
+  theme: string
 }
 
-export interface ConfigRequest {
-  site: string,
-  path: string,
-  config?: string,
-  signature?: string
+export interface CreateCommentRequest extends ApiRequest {
+  payload?: {
+    body: string
+    name?: string
+    token?: string
+  }
+}
+
+export interface PostCommentResponse {
+  comment: Comment
+  token: string
 }
 
 export interface User {
-  id: string,
-  username?: string,
-  name?: string,
-  moderator?: boolean,
-  avatar: string
+  name?: string
+  moderator?: boolean
+  avatar?: string
 }

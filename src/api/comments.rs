@@ -50,13 +50,14 @@ struct CommentsPage {
     total: i64,
     cursor: Option<String>,
     comments: Vec<CommentWithReplies>,
+    site: Site,
 }
 
 #[derive(Deserialize)]
 struct CommentData {
     body: String,
     name: Option<String>,
-    sid: Option<Base64>,
+    token: Option<Base64>,
 }
 
 fn comments_page(
@@ -134,6 +135,7 @@ fn comments_page(
         comments,
         cursor,
         total,
+        site,
     }
 }
 
@@ -313,7 +315,7 @@ async fn post_comment(
 
             let comment = comments::create(
                 db, page.id, parent_id, &name, &data.body, &avatar,
-                reviewed_at, data.sid.as_ref().unwrap_or(&generate_random_token())
+                reviewed_at, data.token.as_ref().unwrap_or(&generate_random_token())
             ).await?;
 
             Ok(Json({
@@ -354,7 +356,7 @@ async fn approve(
 //         }
 //     }
 // }
-
+//
 // #[derive(Serialize)]
 // struct DeleteCommentData { sid: Option<Base64> }
 // /// DELETE /api/comment/42
@@ -364,13 +366,13 @@ async fn approve(
 //     Json(req): Json<ApiRequest<DeleteCommentData>>,
 // ) -> Result<String> {
 //     let comment = find(&ctx.db, comment_id).await?;
-
+//
 //     let (_, user) = req.extract_verified(&ctx.db).await?;
-
+//
 //     if !modifiable(user.as_ref(), req.payload.as_ref().and_then(|p| p.sid.as_ref()), &comment.sid) { return Err(Error::Forbidden) }
-
+//
 //     let _payload = &req.payload;
-
+//
 //     let _ = comments::delete(&ctx.db, comment_id).await?;
 //     Ok("Success".to_string())
 // }

@@ -7,6 +7,7 @@ use crate::cli::SitesCommandArgs;
 #[derive(FromRow, Debug, Serialize)]
 pub struct Site {
     pub site: String,
+    #[serde(skip_serializing)]
     pub secret: Vec<u8>,
     pub private: bool,
     pub anonymous: bool,

@@ -13,7 +13,7 @@ distributed as a single executable binary, which you can download and run on you
 * Integrate your existing users or allow anonymous commenting
 * [Web push](https://developer.mozilla.org/en-US/docs/Web/API/Push_API) notifications
 * Honeypot for trapping bots
-* Multiple configurations per domain or page
+* Multiple configurations per domain
 * Customisable - change the theme or use your own CSS
 
 ### ⚡️ Quickstart
@@ -111,7 +111,7 @@ comments. Signing the user object **MUST** happen on your back-end.
 
 Ok, now that you have been warned, let's sign the message. First, grab the secret from the config:
 
-    $ ./besedka config get my.blog.com
+    $ ./besedka sites get my.blog.com
 
 You should see the `base64` encoded secret. To get the signature of a user object, you have to
 obtain a SHA256 HMAC digest and then `base64` encode it. Here's how you would do that in Ruby:
@@ -141,7 +141,7 @@ tag, please ensure you sign the exact same value on your backend. Signing this:
 ```json
 {
   "name": "Dennis Ritchie",
-  "moderator": true,
+  "moderator": true
 }
 ```
 
