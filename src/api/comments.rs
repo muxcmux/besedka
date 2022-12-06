@@ -3,7 +3,7 @@ use crate::{
     db::{
         comments::{Comment, self},
         pages::{Page, self},
-        sites::{Site, self},
+        sites::Site,
     },
 };
 use axum::{extract::Path, routing::post, Json, Router};
@@ -289,9 +289,9 @@ async fn post_comment(
     parent_id: Option<i64>
 ) -> Result<Json<PostCommentResponse>> {
     match req.payload {
-        None => Err(Error::unprocessable_entity([("payload", "can't be blank")])),
+        None => Err(Error::UnprocessableEntity("Payload can't be blank")),
         Some(ref data) => {
-            if data.body.len() < 1 { return Err(Error::unprocessable_entity([("body", "can't be blank")])) }
+            if data.body.trim().len() < 1 { return Err(Error::UnprocessableEntity("Comment can't be blank")) }
 
             let (site, user) = req.extract_verified(db).await?;
             let page = match parent_id {
@@ -305,11 +305,12 @@ async fn post_comment(
             authorize_posting(&site, &user, &page)?;
 
             let anon = String::from("Anonymous");
-            let (name, avatar) = user
+            let (mut name, avatar) = user
                 .as_ref()
                 .map_or((data.name.as_ref().unwrap_or(&anon), None), |c| {
                     (&c.name, c.avatar.as_ref())
                 });
+            if name.trim() == "" { name = &anon }
 
             let reviewed_at = !site.moderated || (user.is_some() && user.as_ref().unwrap().moderator);
 

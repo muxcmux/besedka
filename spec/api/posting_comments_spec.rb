@@ -5,7 +5,6 @@ RSpec.describe 'Posting a comment with bad data' do
 
   let(:req) { { site: 'demo', path: '/' } }
   let(:response) { post("/api/comment", req) }
-  let(:json) { JSON.parse(response.body, symbolize_names: true) }
 
   context 'without site' do
     let(:req) { { path: '/' } }
@@ -26,16 +25,12 @@ RSpec.describe 'Posting a comment with bad data' do
   context 'without a payload' do
     it 'returns errors' do
       expect(response.status).to eq 422
-      expect(json).to eq({
-        errors: {
-          payload: ["can't be blank"]
-        }
-      })
+      expect(response.body).to match(/Payload can't be blank/)
     end
   end
 
   context 'with a missing body' do
-    let(:req) { { site: 'demo', path: '/', payload: {} } }
+    let(:req) { { site: 'test', path: '/', payload: {} } }
     it 'return serialization error' do
       expect(response.status).to eq 422
       expect(response.body).to match(/missing field `body`/)
@@ -43,14 +38,10 @@ RSpec.describe 'Posting a comment with bad data' do
   end
 
   context 'with a blank body' do
-    let(:req) { { site: 'demo', path: '/', payload: { body: "" } } }
+    let(:req) { { site: 'test', path: '/', payload: { body: "" } } }
     it 'returns errors' do
       expect(response.status).to eq 422
-      expect(json).to eq({
-        errors: {
-          body: ["can't be blank"]
-        }
-      })
+      expect(response.body).to match(/Comment can't be blank/)
     end
   end
 end
@@ -160,7 +151,18 @@ RSpec.describe 'Commenter name' do
     end
 
     context 'without a name' do
+      let(:req) { { site: 'test', path: '/', payload: { body: 'hello' } } }
+
       it 'defaults to Anonymous' do
+        expect(json[:comment]).to match(hash_including(id: 1, name: 'Anonymous', body: 'hello'))
+      end
+    end
+
+    context 'with a blank name' do
+      let(:req) { { site: 'test', path: '/', payload: { name: '   ', body: 'hello' } } }
+
+      it 'defaults to Anonymous' do
+        expect(json[:comment]).to match(hash_including(id: 1, name: 'Anonymous', body: 'hello'))
       end
     end
   end

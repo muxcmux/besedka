@@ -1,6 +1,6 @@
 import App from "./app"
 import { PostCommentResponse } from "./types"
-import { post, reviver } from "./utils"
+import { getToken, message, post, setToken } from "./utils"
 
 export default class NewComment {
   app: App
@@ -27,6 +27,8 @@ export default class NewComment {
     }
 
     this.body = document.createElement('textarea')
+    const val = window.localStorage.getItem('__besedka_comment_backup')
+    if (val) this.body.value = val
     this.body.setAttribute('placeholder', 'Leave a comment')
     this.container.append(this.body)
 
@@ -37,33 +39,40 @@ export default class NewComment {
 
   attachEvents() {
     this.button.addEventListener('click', e => this.comment(e))
+    this.body.addEventListener('change', e => this.save(e))
+    this.body.addEventListener('keyup', e => this.save(e))
+  }
+
+  save(_e: Event) {
+    window.localStorage.setItem('__besedka_comment_backup', this.body.value)
   }
 
   reset() {
     this.body.value = ''
+    window.localStorage.removeItem('__besedka_comment_backup')
   }
 
-  async comment(_e: Event) {
-    if (!this.body.value) {
-      this.app.error('What would you like to say?')
+  async comment(_e: MouseEvent) {
+    if (!this.body.value.trim()) {
+      message('What would you like to say?')
     } else {
       this.button.disabled = true
+
       const body = this.body.value
       const name = this.name?.value
-      const token = this.app.getToken()
+      const token = getToken()
 
       try {
-        const request = await post('/api/comment', Object.assign({
+        const { json } = await post<PostCommentResponse>('/api/comment', Object.assign({
           payload: { body, name, token }
         }, this.app.req))
 
-        if (request.ok) {
-          const response = JSON.parse(await request.text(), reviver) as PostCommentResponse
-          this.app.setToken(response.token)
-          this.app.comments.add(response.comment, true)
+        if (json) {
+          setToken(json.token)
+          this.app.setConfig(json.site)
+          this.app.comments.add(json.comment, true)
+          this.reset()
         }
-      } catch {
-        this.app.error("Unable to post a comment at this time")
       } finally {
         this.button.disabled = false
       }

@@ -115,7 +115,7 @@ impl<T> ApiRequest<T> {
         let user = match &self.user {
             None => None,
             Some(Base64(ref json_bytes)) => match &self.signature {
-                None => None,
+                None => return Err(Error::BadRequest("Cannot verify user object")),
                 Some(Base64(ref s)) => {
                     hmac::verify(&site.key(), json_bytes, s)
                         .map_err(|_| Error::BadRequest("Cannot verify user object"))?;

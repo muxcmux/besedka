@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let config = configContainer?.innerText
     let user = userContainer?.innerText
 
-    let { site, path } = safeParse(user)
+    let { site, path } = safeParse(config)
     let userObject: User = safeParse(user)
 
     if (config) config = btoa(config)

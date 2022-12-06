@@ -53,6 +53,7 @@ export interface CreateCommentRequest extends ApiRequest {
 export interface PostCommentResponse {
   comment: Comment
   token: string
+  site: Config
 }
 
 export interface User {
