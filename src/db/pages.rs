@@ -1,5 +1,5 @@
 use serde::Serialize;
-use sqlx::{query_as, SqlitePool, FromRow};
+use sqlx::{query_as, SqlitePool, FromRow, query};
 
 #[derive(FromRow, Debug, Serialize)]
 pub struct Page {
@@ -21,6 +21,14 @@ pub async fn find_by_site_and_path(db: &SqlitePool, site: &str, path: &str) -> s
     Ok(
         query_as!(Page, "SELECT * FROM pages WHERE site = ? AND path = ? LIMIT 1", site, path)
         .fetch_one(db)
+        .await?
+    )
+}
+
+pub async fn toggle_lock(db: &SqlitePool, id: i64) -> sqlx::Result<sqlx::sqlite::SqliteQueryResult> {
+    Ok(
+        query!("UPDATE pages SET locked = NOT locked WHERE id = ?", id)
+        .execute(db)
         .await?
     )
 }

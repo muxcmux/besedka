@@ -11,7 +11,6 @@ pub struct Comment {
     pub id: i64,
     #[serde(skip_serializing)]
     pub page_id: i64,
-    #[serde(skip_serializing)]
     pub parent_id: Option<i64>,
     pub name: String,
     pub body: String,
@@ -96,8 +95,8 @@ pub async fn root_comments(
 
     select.push_str(common);
     select.push_str(" AND parent_id IS NULL ");
-    // We count the parents + the children
     count.push_str(common);
+    count.push_str(" AND parent_id IS NULL ");
 
     if reviewed_only {
         if token.is_some() {
@@ -156,7 +155,6 @@ pub async fn root_comments(
 
 pub async fn nested_replies(
     db: &SqlitePool,
-    limit: i64,
     reviewed_only: bool,
     token: &Option<Base64>,
     parents: &Vec<Comment>,
@@ -167,43 +165,24 @@ pub async fn nested_replies(
     let mut condition = "".to_string();
     if reviewed_only {
         if token.is_some() {
-            condition.push_str("WHERE (r.reviewed = 1 OR r.token = ?)");
+            condition.push_str("AND (reviewed = 1 OR token = ?)");
         } else {
-            condition.push_str("WHERE r.reviewed = 1");
+            condition.push_str("AND reviewed = 1");
         }
     }
 
     let query = format!(
         r#"
-        SELECT
-            id, page_id, parent_id, name, body, avatar,
-            reviewed, created_at, updated_at, token
-        FROM (
             SELECT
-                r.id AS id,
-                r.page_id AS page_id,
-                r.parent_id AS parent_id,
-                r.name AS name,
-                r.body AS body,
-                r.avatar AS avatar,
-                r.reviewed AS reviewed,
-                r.created_at AS created_at,
-                r.updated_at AS updated_at,
-                r.token AS token,
-                row_number() OVER (PARTITION BY c.id ORDER BY r.created_at, r.id) AS rn
-            FROM comments c
-            LEFT JOIN comments r
-            ON r.parent_id = c.id
+                id, page_id, parent_id, name, body, avatar,
+                reviewed, created_at, updated_at, token
+            FROM comments
+            WHERE parent_id IN({ids})
             {condition}
-        )
-        WHERE parent_id IN({ids})
-        AND id NOT NULL
-        AND rn <= {limit}
-        ORDER BY created_at, id;
-    "#,
+            ORDER BY created_at, id
+        "#,
         condition = condition,
         ids = ids,
-        limit = limit
     );
 
     let mut results = query_as::<_, Comment>(&query);

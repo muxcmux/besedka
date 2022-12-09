@@ -25,17 +25,7 @@ RSpec.describe 'Single page of comments' do
           hash_including(id: 1, name: 'Anonymous', body: 'hello world 0', thread: { cursor: nil, replies: [] })
         ],
         cursor: nil,
-        total: 5,
-        site: {
-          site: 'test',
-          private: false,
-          anonymous: true,
-          moderated: false,
-          comments_per_page: 25,
-          replies_per_comment: 5,
-          minutes_to_edit: 3,
-          theme: 'day_and_night'
-        }
+        total: 5
       )
     )
   end
@@ -43,7 +33,7 @@ end
 
 RSpec.describe 'Multiple pages of comments' do
   before do
-    add_site('test', private: false, anonymous: true, moderated: false, comments_per_page: 2)
+    add_site('test', private: false, anonymous: true, moderated: false)
 
     5.times do |i|
       post(
@@ -98,7 +88,7 @@ end
 
 RSpec.describe 'Two pages of comments and a thread' do
   before do
-    add_site('test', private: false, anonymous: true, moderated: false, comments_per_page: 2, replies_per_comment: 2)
+    add_site('test', private: false, anonymous: true, moderated: false)
 
     5.times do |i|
       post(
@@ -125,7 +115,7 @@ RSpec.describe 'Two pages of comments and a thread' do
           hash_including(id: 8, name: 'Anonymous', body: 'hello world 4', thread: { cursor: nil, replies: [] }),
           hash_including(id: 7, name: 'Anonymous', body: 'hello world 3', thread: { cursor: nil, replies: [] })
         ],
-        total: 8
+        total: 5
       )
     )
     expect(response[:cursor]).to_not be_nil
@@ -142,7 +132,7 @@ RSpec.describe 'Two pages of comments and a thread' do
           ),
           hash_including(id: 2, name: 'Anonymous', body: 'hello world 1', thread: { cursor: nil, replies: [] })
         ],
-        total: 8
+        total: 5
       )
     )
   end
@@ -315,7 +305,7 @@ RSpec.describe 'Filtering comments' do
                 ]
               })
             ],
-            total: 2
+            total: 1
           )
         )
       end
@@ -339,7 +329,7 @@ RSpec.describe 'Filtering comments' do
                 ]
               })
             ],
-            total: 3
+            total: 1
           )
         )
       end
@@ -365,7 +355,7 @@ RSpec.describe 'Filtering comments' do
                 ]
               })
             ],
-            total: 5
+            total: 3
           )
         )
       end

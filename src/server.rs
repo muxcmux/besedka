@@ -70,6 +70,8 @@ fn router(context: Arc<api::AppContext>) -> Router {
         .route("/", get(root))
         .merge(api::login::router())
         .merge(api::comments::router())
+        .merge(api::sites::router())
+        .merge(api::pages::router())
         .merge(assets::router())
         .layer(middleware)
 }

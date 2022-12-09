@@ -10,11 +10,12 @@ use argon2::{
 };
 
 #[derive(FromRow, Debug, Serialize)]
-pub struct Moderator {
-  pub name: String,
-  pub password: String,
-  pub avatar: Option<String>,
-  pub sid: Option<Base64>,
+    pub struct Moderator {
+    pub name: String,
+    #[serde(skip_serializing)]
+    pub password: String,
+    pub avatar: Option<String>,
+    pub sid: Option<Base64>,
 }
 
 /// Returns all moderators for a given site

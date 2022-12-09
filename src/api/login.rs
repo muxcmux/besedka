@@ -3,7 +3,7 @@ use axum::{Json, Router, routing::post};
 use serde::Deserialize;
 
 use crate::{
-    db::moderators::find_by_name,
+    db::moderators::{find_by_name, Moderator},
     api::{Error, Context, Result},
 };
 
@@ -23,8 +23,8 @@ struct LoginRequest {
 async fn login(
     ctx: Context,
     Json(req): Json<LoginRequest>,
-) -> Result<String> {
-    let moderator = find_by_name(&ctx.db, &req.name)
+) -> Result<Json<Moderator>> {
+    let mut moderator = find_by_name(&ctx.db, &req.name)
         .await
         .map_err(|_| Error::Unauthorized)?;
 
@@ -38,5 +38,7 @@ async fn login(
     let sid = generate_random_token();
     moderator.set_sid(&ctx.db, &sid).await;
 
-    Ok(sid.into())
+    moderator.sid = Some(sid);
+
+    Ok(Json(moderator))
 }

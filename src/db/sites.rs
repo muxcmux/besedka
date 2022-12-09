@@ -7,14 +7,10 @@ use crate::cli::SitesCommandArgs;
 #[derive(FromRow, Debug, Serialize)]
 pub struct Site {
     pub site: String,
-    #[serde(skip_serializing)]
     pub secret: Vec<u8>,
     pub private: bool,
     pub anonymous: bool,
     pub moderated: bool,
-    pub comments_per_page: i64,
-    pub replies_per_comment: i64,
-    pub minutes_to_edit: i64,
     pub theme: String,
 }
 
@@ -64,9 +60,6 @@ pub async fn insert(db: &SqlitePool, args: &SitesCommandArgs) -> sqlx::Result<Si
     append(&args.private, "private", &mut insert, &mut values);
     append(&args.anonymous, "anonymous", &mut insert, &mut values);
     append(&args.moderated, "moderated", &mut insert, &mut values);
-    append(&args.comments_per_page, "comments_per_page", &mut insert, &mut values);
-    append(&args.replies_per_comment, "replies_per_comment", &mut insert, &mut values);
-    append(&args.minutes_to_edit, "minutes_to_edit", &mut insert, &mut values);
     append(&args.theme, "theme", &mut insert, &mut values);
 
     insert.push_str(") ");
@@ -80,9 +73,6 @@ pub async fn insert(db: &SqlitePool, args: &SitesCommandArgs) -> sqlx::Result<Si
     if let Some(a) = args.private { result = result.bind(a) }
     if let Some(a) = args.anonymous { result = result.bind(a) }
     if let Some(a) = args.moderated { result = result.bind(a) }
-    if let Some(a) = args.comments_per_page { result = result.bind(a) }
-    if let Some(a) = args.replies_per_comment { result = result.bind(a) }
-    if let Some(a) = args.minutes_to_edit { result = result.bind(a) }
     if let Some(ref a) = args.theme { result = result.bind(a) }
 
     result = result.bind(&args.site);
@@ -100,9 +90,6 @@ pub async fn update(db: &SqlitePool, existing: Site, args: SitesCommandArgs) -> 
     if let Some(_) = args.private { update.push_str(", private = ?") };
     if let Some(_) = args.anonymous { update.push_str(", anonymous = ?") };
     if let Some(_) = args.moderated { update.push_str(", moderated = ?") };
-    if let Some(_) = args.comments_per_page { update.push_str(", comments_per_page = ?") };
-    if let Some(_) = args.replies_per_comment { update.push_str(", replies_per_comment = ?") };
-    if let Some(_) = args.minutes_to_edit { update.push_str(", minutes_to_edit = ?") };
     if let Some(_) = args.theme { update.push_str(", theme = ?") };
 
     update.push_str(" WHERE site = ?");
@@ -114,9 +101,6 @@ pub async fn update(db: &SqlitePool, existing: Site, args: SitesCommandArgs) -> 
     if let Some(a) = args.private { result = result.bind(a) }
     if let Some(a) = args.anonymous { result = result.bind(a) }
     if let Some(a) = args.moderated { result = result.bind(a) }
-    if let Some(a) = args.comments_per_page { result = result.bind(a) }
-    if let Some(a) = args.replies_per_comment { result = result.bind(a) }
-    if let Some(a) = args.minutes_to_edit { result = result.bind(a) }
     if let Some(a) = args.theme { result = result.bind(a) }
 
     result = result.bind(&existing.site);

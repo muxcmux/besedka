@@ -93,19 +93,6 @@ pub struct SitesCommandArgs {
     pub moderated: Option<bool>,
 
     #[arg(long)]
-    /// Number of comments to load at once
-    pub comments_per_page: Option<u32>,
-
-    #[arg(long)]
-    /// Number of replies to load at once for each comment
-    pub replies_per_comment: Option<u32>,
-
-    #[arg(long)]
-    /// Minutes before a comment can no longer be edited.
-    /// Setting this to 0 will disable authors from editing their comments completely
-    pub minutes_to_edit: Option<u32>,
-
-    #[arg(long)]
     /// The theme of the comment widget
     pub theme: Option<String>,
 }

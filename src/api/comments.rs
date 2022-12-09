@@ -11,12 +11,11 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
-use super::{User, Base64, generate_random_token};
+use super::{User, Base64, generate_random_token, verify_read_permission};
 
 pub fn router() -> Router {
     Router::new()
         .route("/api/comments", post(index))
-        .route("/api/comments/:comment_id", post(thread))
         .route("/api/comment", post(create))
         .route(
             "/api/comment/:comment_id",
@@ -30,18 +29,13 @@ pub fn router() -> Router {
 #[derive(Serialize)]
 struct CommentWithReplies {
     id: i64,
+    parent_id: Option<i64>,
     name: String,
     body: String,
     avatar: Option<String>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     reviewed: bool,
-    thread: Thread,
-}
-
-#[derive(Serialize)]
-struct Thread {
-    cursor: Option<String>,
     replies: Vec<Comment>,
 }
 
@@ -50,7 +44,6 @@ struct CommentsPage {
     total: i64,
     cursor: Option<String>,
     comments: Vec<CommentWithReplies>,
-    site: Site,
 }
 
 #[derive(Deserialize)]
@@ -60,18 +53,19 @@ struct CommentData {
     token: Option<Base64>,
 }
 
+const COMMENTS_PER_PAGE: i64 = 42;
+
 fn comments_page(
     parents: Vec<Comment>,
     all_replies: Vec<Comment>,
     total: i64,
-    site: Site,
 ) -> CommentsPage {
     let parents_len = parents.len() as i64;
     let mut comments = vec![];
     let mut count = 0_i64;
 
     for parent in parents {
-        if count == site.comments_per_page {
+        if count == COMMENTS_PER_PAGE {
             break;
         }
 
@@ -83,43 +77,26 @@ fn comments_page(
             .cloned()
             .collect();
 
-        let replies_len = comment_replies.len() as i64;
-
-        let mut reply_count = 0_i64;
         for reply in comment_replies {
-            if reply_count == site.replies_per_comment {
-                break;
-            }
             replies.push(reply);
-            reply_count += 1;
         }
-
-        let cursor = if site.replies_per_comment < replies_len {
-            Some(
-                Cursor {
-                    id: replies.last().unwrap().id,
-                    created_at: replies.last().unwrap().created_at,
-                }
-                .encode(),
-            )
-        } else {
-            None
-        };
 
         comments.push(CommentWithReplies {
             id: parent.id,
+            parent_id: None,
             name: parent.name,
             body: parent.body,
             avatar: parent.avatar,
             created_at: parent.created_at,
             updated_at: parent.updated_at,
             reviewed: parent.reviewed,
-            thread: Thread { replies, cursor },
+            replies,
         });
+
         count += 1;
     }
 
-    let cursor = if site.comments_per_page < parents_len {
+    let cursor = if COMMENTS_PER_PAGE < parents_len {
         Some(
             Cursor {
                 id: comments.last().unwrap().id,
@@ -135,24 +112,7 @@ fn comments_page(
         comments,
         cursor,
         total,
-        site,
     }
-}
-
-fn verify_read_permission(site: &Site, user: &Option<User>, page: Option<&Page>) -> Result<()> {
-    if site.private && user.is_none() { return Err(Error::Unauthorized) }
-
-    if let Some(p) = page {
-        if p.site != site.site { return Err(Error::BadRequest("Wrong site requested")) }
-    }
-
-    Ok(())
-}
-
-async fn comment_and_page(ctx: &Context, comment_id: i64) -> Result<(Comment, Page)> {
-    let comment = comments::find_root(&ctx.db, comment_id).await?;
-    let page_id = comment.page_id;
-    Ok((comment, pages::find(&ctx.db, page_id).await?))
 }
 
 #[derive(Deserialize)]
@@ -180,7 +140,7 @@ async fn index(
     let (total, parents) = comments::root_comments(
         &ctx.db,
         page.id,
-        site.comments_per_page + 1,
+        COMMENTS_PER_PAGE + 1,
         show_only_reviewed,
         req.payload.as_ref().map_or(&None, |p| &p.token),
         cursor
@@ -188,7 +148,6 @@ async fn index(
 
     let replies = comments::nested_replies(
         &ctx.db,
-        site.replies_per_comment + 1,
         show_only_reviewed,
         req.payload.as_ref().map_or(&None, |p| &p.token),
         &parents
@@ -198,60 +157,7 @@ async fn index(
         parents,
         replies,
         total,
-        site,
     )))
-}
-
-/// POST /api/thread/42
-async fn thread(
-    ctx: Context,
-    cursor: Option<Cursor>,
-    Path(comment_id): Path<i64>,
-    Json(req): Json<ApiRequest<ListCommentsRequest>>,
-) -> Result<Json<Thread>> {
-    let (site, user) = req.extract_verified(&ctx.db).await?;
-    let (_, page) = comment_and_page(&ctx, comment_id).await?;
-    verify_read_permission(&site, &user, Some(&page))?;
-
-    let show_only_reviewed = user
-        .as_ref()
-        .map_or(true, |u| !u.moderator);
-
-    let all_replies = comments::replies(
-        &ctx.db,
-        comment_id,
-        site.replies_per_comment + 1,
-        cursor,
-        show_only_reviewed,
-        req.payload.as_ref().map_or(&None, |p| &p.token),
-    ).await?;
-
-    let replies_len = all_replies.len() as i64;
-    let mut replies = vec![];
-    let mut count = 0_i64;
-
-    for reply in all_replies {
-        if count == site.replies_per_comment {
-            break;
-        }
-
-        replies.push(reply);
-        count += 1;
-    }
-
-    let cursor = if site.replies_per_comment < replies_len {
-        Some(
-            Cursor {
-                id: replies.last().unwrap().id,
-                created_at: replies.last().unwrap().created_at,
-            }
-            .encode(),
-        )
-    } else {
-        None
-    };
-
-    Ok(Json(Thread { replies, cursor }))
 }
 
 #[derive(Serialize)]

@@ -68,9 +68,6 @@ secret:              {}
 private:             {}
 anonymous:           {}
 moderated:           {}
-comments_per_page:   {}
-replies_per_comment: {}
-minutes_to_edit:     {}
 theme:               {}
 "#,
         cfg.site,
@@ -79,9 +76,6 @@ theme:               {}
         cfg.private,
         cfg.anonymous,
         cfg.moderated,
-        cfg.comments_per_page,
-        cfg.replies_per_comment,
-        cfg.minutes_to_edit,
         cfg.theme
     );
 }

@@ -23,7 +23,7 @@ end
 
 RSpec.describe 'Multiple pages of replies' do
   before do
-    add_site('test', private: false, anonymous: true, moderated: false, replies_per_comment: 2)
+    add_site('test', private: false, anonymous: true, moderated: false)
 
     post('/api/comment', { site: 'test', path: '/', payload: { body: "hello world" } })
     5.times do |i|

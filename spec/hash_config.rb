@@ -3,7 +3,7 @@ require "base64"
 require "json"
 
 user = {
-  name: "Signed user",
+  name: "muxcmux",
   moderator: false
 }.to_json
 

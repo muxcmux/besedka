@@ -1,5 +1,7 @@
 mod error;
 pub mod comments;
+pub mod sites;
+pub mod pages;
 pub mod login;
 pub mod extractors;
 use std::sync::Arc;
@@ -18,7 +20,7 @@ pub type Context = Extension<Arc<AppContext>>;
 
 pub use error::Error;
 
-use crate::db::{sites::{Site, self}, moderators::{Moderator, self}};
+use crate::db::{self, sites::Site, moderators::{Moderator, self}, pages::Page};
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -64,10 +66,6 @@ struct ApiRequest<T> {
 #[sqlx(transparent)]
 pub struct Base64(Vec<u8>);
 
-impl Into<String> for Base64 {
-    fn into(self) -> String { base64::encode(self.0) }
-}
-
 impl Serialize for Base64 {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.collect_str(&base64::display::Base64Display::with_config(
@@ -101,7 +99,7 @@ impl<T> ApiRequest<T> {
     /// by a sid, or a signed 3rd party user
     async fn extract_verified(&self, db: &SqlitePool) -> Result<(Site, Option<User>)> {
         // Fail if there's no config for the requested site
-        let site = sites::find(db, &self.site).await
+        let site = db::sites::find(db, &self.site).await
             .map_err(|_| Error::BadRequest("No configuration found for requested site"))?;
 
         // logged in moderators always take precedence over 3rd party users
@@ -134,4 +132,22 @@ pub fn generate_random_token() -> Base64 {
     let rg = SystemRandom::new();
     let _ = rg.fill(&mut sid);
     Base64(sid.to_vec())
+}
+
+fn verify_read_permission(site: &Site, user: &Option<User>, page: Option<&Page>) -> Result<()> {
+    if site.private && user.is_none() { return Err(Error::Unauthorized) }
+
+    if let Some(p) = page {
+        if p.site != site.site { return Err(Error::BadRequest("Wrong site requested")) }
+    }
+
+    Ok(())
+}
+
+#[derive(Serialize)]
+struct PageConfig {
+    anonymous: bool,
+    moderated: bool,
+    theme: String,
+    locked: bool,
 }

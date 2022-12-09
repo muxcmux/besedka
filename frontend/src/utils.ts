@@ -8,10 +8,14 @@ export function safeParse(text: string | undefined, def = {}) {
   }
 }
 
-export function message(msg: string, klass = 'error') {
-  document.getElementById('besedka-message')!.innerHTML = `
-    <div class="besedka-${klass}">${msg}</li>
-  `
+export function message(msg: string, klass = 'error', element?: HTMLDivElement) {
+  if (!element) element = document.getElementById('besedka-message') as HTMLDivElement
+  element.innerHTML = `<div class="besedka-${klass}">${msg}</div>`
+}
+
+export function clearMessage(element?: HTMLDivElement) {
+  document.getElementById('besedka-message')!.innerHTML = ''
+  if (element) element.innerHTML = ''
 }
 
 export function setToken(token: string) {
@@ -22,12 +26,27 @@ export function getToken(): string | null {
   return window.localStorage.getItem('__besedka_token')
 }
 
-export async function post<T>(endpoint: string, data: {}): Promise<{ status: number, text: string, json: T | null } > {
+export function createElement<T extends HTMLElement>(el: string, className?: string, attributes?: {}): T {
+  const element = document.createElement(el) as T
+  if (className) element.className = className.split(' ').map(c => `besedka-${c}`).join(' ')
+  for (const [key, value] of Object.entries(attributes || {})) {
+    element.setAttribute(key, value as string)
+  }
+  return element
+}
+
+export function createButton(text: string, className?: string): HTMLButtonElement {
+  const button = createElement<HTMLButtonElement>('button', className)
+  button.textContent = text
+  return button
+}
+
+export async function request<T>(endpoint: string, data: {}, method?: string, errorTarget?: HTMLDivElement): Promise<{ status: number, text: string, json: T | null }> {
   const body = JSON.stringify(data, replacer)
   try {
     const response = await fetch(`${HOST}${endpoint}`, {
       body,
-      method: "POST",
+      method: method || "POST",
       mode: "cors",
       headers: { "Content-Type": "application/json" }
     })
@@ -37,7 +56,9 @@ export async function post<T>(endpoint: string, data: {}): Promise<{ status: num
     let json: T | null = null
 
     if (response.status > 399 && response.status != 404) {
-      message(text)
+      message(text, 'error', errorTarget)
+    } else {
+      clearMessage(errorTarget)
     }
 
     const contentType = response.headers.get("content-type");
@@ -49,7 +70,7 @@ export async function post<T>(endpoint: string, data: {}): Promise<{ status: num
 
   } catch(e: any) {
     const data = "Something went wrong and comments are unavailable"
-    message(data)
+    message(data, 'error', errorTarget)
     throw e
   }
 }
