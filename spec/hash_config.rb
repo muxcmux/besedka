@@ -3,8 +3,8 @@ require "base64"
 require "json"
 
 user = {
-  name: "muxcmux",
-  moderator: false
+  name: "An admin",
+  moderator: true
 }.to_json
 
 base64_secret = ARGV[0]

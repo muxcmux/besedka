@@ -11,7 +11,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
-use super::{User, Base64, generate_random_token, verify_read_permission};
+use super::{User, Base64, generate_random_token, verify_read_permission, require_moderator};
 
 pub fn router() -> Router {
     Router::new()
@@ -29,6 +29,19 @@ pub fn router() -> Router {
 #[derive(Serialize)]
 struct CommentWithReplies {
     id: i64,
+    name: String,
+    body: String,
+    avatar: Option<String>,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+    reviewed: bool,
+    owned: bool,
+    replies: Vec<OwnedComment>,
+}
+
+#[derive(Serialize)]
+struct OwnedComment {
+    id: i64,
     parent_id: Option<i64>,
     name: String,
     body: String,
@@ -36,7 +49,7 @@ struct CommentWithReplies {
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     reviewed: bool,
-    replies: Vec<Comment>,
+    owned: bool,
 }
 
 #[derive(Serialize)]
@@ -59,6 +72,7 @@ fn comments_page(
     parents: Vec<Comment>,
     all_replies: Vec<Comment>,
     total: i64,
+    token: &Option<Base64>,
 ) -> CommentsPage {
     let parents_len = parents.len() as i64;
     let mut comments = vec![];
@@ -77,19 +91,38 @@ fn comments_page(
             .cloned()
             .collect();
 
-        for reply in comment_replies {
-            replies.push(reply);
+        for r in comment_replies {
+            let owned = match token {
+                None => false,
+                Some(t) => t == &r.token
+            };
+            replies.push(OwnedComment {
+                id: r.id,
+                parent_id: r.parent_id,
+                name: r.name,
+                body: r.body,
+                avatar: r.avatar,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+                reviewed: r.reviewed,
+                owned,
+            })
         }
+
+        let owned = match token {
+            None => false,
+            Some(t) => t == &parent.token
+        };
 
         comments.push(CommentWithReplies {
             id: parent.id,
-            parent_id: None,
             name: parent.name,
             body: parent.body,
             avatar: parent.avatar,
             created_at: parent.created_at,
             updated_at: parent.updated_at,
             reviewed: parent.reviewed,
+            owned,
             replies,
         });
 
@@ -157,13 +190,14 @@ async fn index(
         parents,
         replies,
         total,
+        req.payload.as_ref().map_or(&None, |p| &p.token),
     )))
 }
 
 #[derive(Serialize)]
 struct PostCommentResponse {
     token: Base64,
-    comment: Comment,
+    comment: OwnedComment,
 }
 /// POST /api/comment
 async fn create(
@@ -225,19 +259,29 @@ async fn post_comment(
                 reviewed_at, data.token.as_ref().unwrap_or(&generate_random_token())
             ).await?;
 
+            let owned = match &data.token {
+                None => false,
+                Some(t) => t == &comment.token
+            };
+
             Ok(Json({
-                PostCommentResponse { token: comment.token.clone(), comment }
+                PostCommentResponse {
+                    token: comment.token.clone(),
+                    comment: OwnedComment {
+                        id: comment.id,
+                        parent_id: comment.parent_id,
+                        name: comment.name,
+                        body: comment.body,
+                        avatar: comment.avatar,
+                        created_at: comment.created_at,
+                        updated_at: comment.updated_at,
+                        reviewed: comment.reviewed,
+                        owned,
+                    }
+                }
             }))
         }
     }
-}
-
-fn require_moderator(user: &Option<User>) -> Result<()> {
-    match user {
-        None => return Err(Error::Unauthorized),
-        Some(u) => if !u.moderator { return Err(Error::Forbidden) }
-    };
-    Ok(())
 }
 
 /// PATCH /api/comment/42

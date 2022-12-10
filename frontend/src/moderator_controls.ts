@@ -10,12 +10,12 @@ export default class ModeratorControls {
 
   initUi() {
     this.element.innerHTML = ''
-    if (this.signedModerator() || this.loggedModerator()) this.buildLock()
+    if (this.moderator()) this.buildLock()
     if (this.loggedModerator()) this.buildLogout()
     if (!this.loggedModerator() && !this.signedUser()) this.buildLogin()
   }
 
-  signedModerator(): boolean {
+  moderator(): boolean {
     return window.__besedka.user.moderator === true
   }
 
@@ -73,7 +73,7 @@ export default class ModeratorControls {
           if (status === 401) {
             message("Invalid credentials", "error", msg)
           } else if(json) {
-            const user = { name: json.name, sid: json.sid, avatar: json.avatar }
+            const user = { name: json.name, sid: json.sid, avatar: json.avatar, moderator: true }
             window.localStorage.setItem('__besedka_mod', JSON.stringify(user))
             window.__besedka.user = user
             window.__besedka.req.sid = json.sid

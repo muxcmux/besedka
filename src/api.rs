@@ -144,6 +144,14 @@ fn verify_read_permission(site: &Site, user: &Option<User>, page: Option<&Page>)
     Ok(())
 }
 
+fn require_moderator(user: &Option<User>) -> Result<()> {
+    match user {
+        None => return Err(Error::Unauthorized),
+        Some(u) => if !u.moderator { return Err(Error::Forbidden) }
+    };
+    Ok(())
+}
+
 #[derive(Serialize)]
 struct PageConfig {
     anonymous: bool,

@@ -9,12 +9,12 @@ distributed as a single executable binary, which you can download and run on you
 * Free, open, no ads, no tracking, no bullshit
 * Markdown
 * Moderation
-* No social logins, No user registration, confirmation, etc.
+* No social logins, No user registration, confirmation emails, etc.
 * Integrate your existing users or allow anonymous commenting
 * [Web push](https://developer.mozilla.org/en-US/docs/Web/API/Push_API) notifications
 * Honeypot for trapping bots
 * Multiple configurations per domain
-* Customisable - change the theme or use your own CSS
+* Themes 🎨 (or use your own CSS)
 
 ### ⚡️ Quickstart
 
@@ -57,6 +57,8 @@ this happens, you need to immediately delete the affected config:
 
     $ besedka sites remove blog.mysite.com
 
+This will only remove the site config. Comments will remain intact
+
 ### Adding moderators
 
 A moderator can either be set with a signed user object, or one can be added from the CLI:
@@ -65,7 +67,7 @@ A moderator can either be set with a signed user object, or one can be added fro
 
 ### Overriding the site config and the page for which comments are loaded
 
-By default the comment widget will request the config assiciated with the current hostname. You can
+By default the comment widget will request the config associated with the current hostname. You can
 explicitly require a different site and page by providing a config `<script>` tag:
 
 ```html
@@ -109,7 +111,7 @@ message will be displayed instead of the commenting widget.
 pages, otherwise anyone can sign a user object, make themselves a `moderator`, and wipe all your
 comments. Signing the user object **MUST** happen on your back-end.
 
-Ok, now that you have been warned, let's sign the message. First, grab the secret from the config:
+OK, now that you have been warned, let's sign the message. First, grab the secret from the config:
 
     $ ./besedka sites get my.blog.com
 
@@ -151,4 +153,8 @@ results in a different signature than this:
 {"name":"Dennis Ritchie","moderator":true}
 ```
 
-The `name` and `moderator` keys for the user obejct are required. The `avatar` key is optional.
+The `name` and `moderator` keys for the user object are required. The `avatar` key is optional.
+
+### Theme
+
+Besedka comes with a default `day_and_night` theme.

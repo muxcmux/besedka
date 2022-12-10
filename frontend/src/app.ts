@@ -36,17 +36,20 @@ export default class App {
     this.cursor = null
 
     this.draw()
-
-    new NewCommentForm(document.getElementById('besedka-new-comment') as HTMLFormElement, ({ token, comment }) => {
-      setToken(token)
-      this.comments.prepend(new Comment(comment).element)
-    })
-
     await this.loadConfig()
 
-    if (this.config) this.loadComments()
-
     new ModeratorControls(document.getElementById('besedka-moderator-controls') as HTMLDivElement)
+
+    if (this.config) await this.loadComments()
+
+    if (this.config?.locked) {
+      message('Leaving comments on this page has been disabled', 'info')
+    } else {
+      new NewCommentForm(document.getElementById('besedka-new-comment') as HTMLFormElement, ({ token, comment }) => {
+        setToken(token)
+        this.comments.prepend(new Comment(comment).element)
+      })
+    }
   }
 
   draw() {

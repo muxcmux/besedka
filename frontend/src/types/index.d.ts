@@ -17,6 +17,7 @@ declare global {
     reviewed: boolean
     created_at: Date
     updated_at: Date
+    owned: boolean
     replies?: CommentRecord[]
   }
 

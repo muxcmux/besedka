@@ -43,7 +43,7 @@ pub async fn approve(db: &SqlitePool, id: i64) -> sqlx::Result<()> {
     let mut tx = db.begin().await?;
 
     let _ = query(
-        "UPDATE comments SET reviewed = 1 WHERE id = ? AND reviewed = 0"
+        "UPDATE comments SET reviewed = 1 WHERE id = ?"
     ).bind(id).execute(&mut tx).await?;
 
     tx.commit().await?;
