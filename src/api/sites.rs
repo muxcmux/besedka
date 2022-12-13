@@ -18,6 +18,5 @@ async fn page_config(ctx: Context, Json(req): Json<ApiRequest<()>>) -> Result<Js
         anonymous: site.anonymous,
         moderated: site.moderated,
         locked,
-        theme: site.theme,
     }))
 }

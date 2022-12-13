@@ -1,5 +1,8 @@
+import EditCommentForm from "./edit_comment_form"
 import NewCommentForm from "./new_comment_form"
-import { createButton, createElement, request } from "./utils"
+import { createButton, createElement, getToken, request } from "./utils"
+
+const TIME_TO_EDIT = 3 * 60
 
 export default class Comment {
   comment: CommentRecord
@@ -8,9 +11,9 @@ export default class Comment {
 
   replies = createElement('ol', 'replies')
   element = createElement('li', 'comment')
-  author  = createElement('span', 'comment-author')
-  date    = createElement('span', 'comment-timestamp')
-  body    = createElement('span', 'comment-body')
+  author  = createElement('div', 'comment-author')
+  date    = createElement('div', 'comment-timestamp')
+  body    = createElement('div', 'comment-body')
 
   constructor(comment: CommentRecord) {
     this.comment = comment
@@ -20,17 +23,24 @@ export default class Comment {
       this.element.append(this.createApproveButton())
     }
 
-    if (window.__besedka.user.moderator || (this.comment.owned && !this.comment.replies?.length)) {
+    if (window.__besedka.user.moderator || (this.comment.owned && this.withinEditingPeriod())) {
+      this.element.append(this.createEditControls())
       this.element.append(this.createDeleteButton())
-    }
-
-    if (window.__besedka.user.moderator || this.comment.owned) {
-      this.element.append(this.createEditButton())
     }
 
     this.buildReplies()
 
     if (this.canReply()) this.element.append(this.createReplyButton())
+  }
+
+  secondsSinceCreated(): number {
+    const created = this.comment.created_at.getTime()
+    const now = new Date(new Date().toUTCString()).getTime()
+    return (now - created) / 1000
+  }
+
+  withinEditingPeriod(): boolean {
+    return this.secondsSinceCreated() <= TIME_TO_EDIT
   }
 
   buildReplies() {
@@ -48,14 +58,15 @@ export default class Comment {
     return !this.comment.parent_id && !this.comment.locked && !window.__besedka.config?.locked
   }
 
-  buildComment({ created_at, body, name, reviewed, locked, owned }: CommentRecord) {
+  buildComment({ created_at, html_body, name, reviewed, locked, owned, edited }: CommentRecord) {
     if (!reviewed) this.element.classList.add('besedka-unreviewed-comment')
     if (locked) this.element.classList.add('besedka-locked-comment')
     if (owned) this.element.classList.add('besedka-owned-comment')
+    if (edited) this.element.classList.add('besedka-edited-comment')
 
     this.author.textContent = name
     this.date.textContent = created_at.toLocaleString(navigator.language, { dateStyle: "medium", timeStyle: "short" })
-    this.body.textContent = body
+    this.body.innerHTML = html_body
 
     this.element.append(this.author, this.date, this.body)
   }
@@ -78,20 +89,54 @@ export default class Comment {
     return button
   }
 
+  url(): string {
+    return `/api/comment/${this.comment.id}`
+  }
+
   createDeleteButton(): HTMLButtonElement {
     const button = createButton('Delete', 'delete-comment')
     button.addEventListener('click', async () => {
       if (confirm("There's no undo. Proceed?")) {
-        // await request(`/api/comment/${this.comment.id}`, window.)
-        this.element.remove()
+        const { status } = await request(this.url(), Object.assign({
+          payload: getToken()
+        }, window.__besedka.req), 'DELETE')
+        if (status == 200) this.element.remove()
       }
     })
+
+    if (!window.__besedka.user.moderator) this.expireControl(button)
     return button
   }
 
-  createEditButton(): HTMLButtonElement {
+  createEditControls(): HTMLButtonElement {
     const button = createButton('Edit', 'edit-comment')
+    button.addEventListener('click', () => {
+      button.hidden = true
+      this.body.hidden = true
+      const form = createElement<HTMLFormElement>('form', 'edit-comment')
+      const editForm = new EditCommentForm(form, this.comment, ({ comment }) => {
+        this.comment.html_body = comment.html_body
+        this.comment.body = comment.body
+        this.body.innerHTML = comment.html_body
+        this.body.hidden = false
+        this.body.classList.add('besedka-edited-comment')
+        editForm.destroy()
+        button.hidden = false
+      }, () => {
+        this.body.hidden = false
+        button.hidden = false
+      })
+      this.element.insertBefore(form, this.body)
+    })
+
+    if (!window.__besedka.user.moderator) this.expireControl(button)
     return button
+  }
+
+  expireControl(element: HTMLButtonElement) {
+    setTimeout(() => {
+      element.remove()
+    }, (TIME_TO_EDIT - this.secondsSinceCreated()) * 1000)
   }
 
   openReplyForm(e: MouseEvent) {

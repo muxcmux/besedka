@@ -1,5 +1,6 @@
 mod error;
 pub mod comments;
+pub mod preview;
 pub mod sites;
 pub mod pages;
 pub mod login;
@@ -156,6 +157,5 @@ fn require_moderator(user: &Option<User>) -> Result<()> {
 struct PageConfig {
     anonymous: bool,
     moderated: bool,
-    theme: String,
     locked: bool,
 }

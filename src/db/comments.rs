@@ -1,24 +1,22 @@
 use chrono::{DateTime, Utc};
-use serde::Serialize;
 use sqlx::{SqlitePool, FromRow, query_as, query, Row};
 
 use crate::api::{Base64, Result, Cursor};
 
 use super::UTC_DATETIME_FORMAT;
 
-#[derive(FromRow, Clone, Debug, Serialize)]
+#[derive(FromRow, Clone, Debug)]
 pub struct Comment {
     pub id: i64,
-    #[serde(skip_serializing)]
     pub page_id: i64,
     pub parent_id: Option<i64>,
     pub name: String,
+    pub html_body: String,
     pub body: String,
     pub avatar: Option<String>,
     pub reviewed: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-    #[serde(skip_serializing)]
     pub token: Base64,
 }
 
@@ -28,7 +26,7 @@ pub async fn find(db: &SqlitePool, id: i64) -> sqlx::Result<Comment> {
             Comment,
             r#"
                 SELECT
-                id, page_id, parent_id, name, body, avatar, reviewed,
+                id, page_id, parent_id, name, html_body, body, avatar, reviewed,
                 created_at as "created_at: DateTime<Utc>",
                 updated_at as "updated_at: DateTime<Utc>",
                 token as "token: Base64"
@@ -65,7 +63,7 @@ pub async fn find_root(db: &SqlitePool, id: i64) -> sqlx::Result<Comment> {
             Comment,
             r#"
                 SELECT
-                id, page_id, parent_id, name, body, avatar, reviewed,
+                id, page_id, parent_id, name, html_body, body, avatar, reviewed,
                 created_at as "created_at: DateTime<Utc>",
                 updated_at as "updated_at: DateTime<Utc>",
                 token as "token: Base64"
@@ -85,7 +83,7 @@ pub async fn root_comments(
     cursor: Option<Cursor>,
 ) -> Result<(i64, Vec<Comment>)> {
     let mut select = String::from(r#"
-        SELECT id, page_id, parent_id, name, body, avatar,
+        SELECT id, page_id, parent_id, name, html_body, body, avatar,
         reviewed, created_at, updated_at, token
     "#);
 
@@ -174,7 +172,7 @@ pub async fn nested_replies(
     let query = format!(
         r#"
             SELECT
-                id, page_id, parent_id, name, body, avatar,
+                id, page_id, parent_id, name, html_body, body, avatar,
                 reviewed, created_at, updated_at, token
             FROM comments
             WHERE parent_id IN({ids})
@@ -218,7 +216,7 @@ pub async fn replies(
         Some(cur) => {
             _q = format!(
                 r#"
-                    SELECT id, page_id, parent_id, name, body, avatar,
+                    SELECT id, page_id, parent_id, name, html_body, body, avatar,
                     reviewed, created_at, updated_at, token
                     FROM comments
                     WHERE parent_id = ?
@@ -238,7 +236,7 @@ pub async fn replies(
         None => {
             _q = format!(
                 r#"
-                    SELECT id, page_id, parent_id, name, body, avatar,
+                    SELECT id, page_id, parent_id, name, html_body, body, avatar,
                     reviewed, created_at, updated_at, token
                     FROM comments
                     WHERE parent_id = ?
@@ -265,6 +263,7 @@ pub async fn create(
     page_id: i64,
     parent_id: Option<i64>,
     name: &str,
+    html_body: &str,
     body: &str,
     avatar: &Option<&String>,
     reviewed: bool,
@@ -274,18 +273,49 @@ pub async fn create(
 
     let comment = query_as::<_, Comment>(
             r#"
-                INSERT INTO comments (page_id, parent_id, name, body, avatar, reviewed, token)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO comments (page_id, parent_id, name, html_body, body, avatar, reviewed, token)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 RETURNING *
             "#
         )
         .bind(page_id)
         .bind(parent_id)
         .bind(name)
+        .bind(html_body)
         .bind(body)
         .bind(avatar)
         .bind(reviewed)
         .bind(token)
+        .fetch_one(&mut tx)
+        .await?;
+
+    tx.commit().await?;
+
+    Ok(comment)
+}
+
+pub async fn update(
+    db: &SqlitePool,
+    id: i64,
+    html_body: &str,
+    body: &str,
+) -> sqlx::Result<Comment> {
+    let mut tx = db.begin().await?;
+
+    let comment = query_as::<_, Comment>(
+            r#"
+                UPDATE comments
+                SET
+                html_body = ?,
+                body = ?,
+                updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+                WHERE id = ?
+                RETURNING *
+            "#
+        )
+        .bind(html_body)
+        .bind(body)
+        .bind(id)
         .fetch_one(&mut tx)
         .await?;
 

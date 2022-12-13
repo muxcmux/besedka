@@ -18,6 +18,5 @@ async fn page(ctx: Context, Json(req): Json<ApiRequest<()>>) -> Result<Json<Page
         anonymous: site.anonymous,
         moderated: site.moderated,
         locked: !page.locked,
-        theme: site.theme,
     }))
 }

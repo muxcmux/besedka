@@ -91,10 +91,6 @@ pub struct SitesCommandArgs {
     /// Set to true to require moderator approval
     /// before comments are visible to everyone
     pub moderated: Option<bool>,
-
-    #[arg(long)]
-    /// The theme of the comment widget
-    pub theme: Option<String>,
 }
 
 #[derive(Debug, Clone, Subcommand)]

@@ -4,7 +4,7 @@ RSpec.describe 'Getting config' do
       response = post("/api/config", { site: "test", path: "/" })
 
       expect(response.status).to eq(400)
-      expect(response.body). to match(/No configuration found/)
+      expect(response.body).to match(/No configuration found/)
     end
   end
 
@@ -18,8 +18,7 @@ RSpec.describe 'Getting config' do
       expect(JSON.parse(response.body, symbolize_names: true)).to eq({
         anonymous: false,
         moderated: true,
-        locked: false,
-        theme: "day_and_night"
+        locked: false
       })
     end
   end

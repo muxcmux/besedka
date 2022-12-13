@@ -11,6 +11,7 @@ declare global {
     id: number
     parent_id?: number
     name: string
+    html_body: string
     body: string
     avatar?: string
     locked: boolean
@@ -18,6 +19,7 @@ declare global {
     created_at: Date
     updated_at: Date
     owned: boolean
+    edited: boolean
     replies?: CommentRecord[]
   }
 
@@ -39,7 +41,6 @@ declare global {
     anonymous: boolean
     moderated: boolean
     locked: boolean
-    theme: string
   }
 
   interface CreateCommentRequest extends ApiRequest {

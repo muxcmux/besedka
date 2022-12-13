@@ -3,7 +3,6 @@ RSpec.describe 'Posting a comment with bad data' do
     add_site('test', private: false, anonymous: true, moderated: false)
   end
 
-  let(:req) { { site: 'demo', path: '/' } }
   let(:response) { post("/api/comment", req) }
 
   context 'without site' do
@@ -23,6 +22,7 @@ RSpec.describe 'Posting a comment with bad data' do
   end
 
   context 'without a payload' do
+    let(:req) { { site: 'test', path: '/' } }
     it 'returns errors' do
       expect(response.status).to eq 422
       expect(response.body).to match(/Payload can't be blank/)
@@ -42,6 +42,14 @@ RSpec.describe 'Posting a comment with bad data' do
     it 'returns errors' do
       expect(response.status).to eq 422
       expect(response.body).to match(/Comment can't be blank/)
+    end
+  end
+
+  context 'with an incorrect site' do
+    let(:req) { { site: 'demo', path: '/', payload: { body: "hello" } } }
+    it 'returns errors' do
+      expect(response.status).to eq 400
+      expect(response.body).to match(/No configuration found/)
     end
   end
 end

@@ -4,7 +4,6 @@ RSpec.describe 'Posting a reply with bad data' do
     post("/api/comment", { site: 'test', path: '/', payload: { body: "hello" } })
   end
 
-  let(:req) { { site: 'demo', path: '/' } }
   let(:comment_id) { 1 }
   let(:response) { post("/api/comment/#{comment_id}", req) }
 
@@ -25,6 +24,7 @@ RSpec.describe 'Posting a reply with bad data' do
   end
 
   context 'without a payload' do
+    let(:req) { { site: 'test', path: '/' } }
     it 'returns errors' do
       expect(response.status).to eq 422
       expect(response.body).to match(/Payload can't be blank/)
@@ -44,6 +44,14 @@ RSpec.describe 'Posting a reply with bad data' do
     it 'returns errors' do
       expect(response.status).to eq 422
       expect(response.body).to match(/Comment can't be blank/)
+    end
+  end
+
+  context 'with an incorrect site' do
+    let(:req) { { site: 'demo', path: '/', payload: { body: "hello" } } }
+    it 'returns errors' do
+      expect(response.status).to eq 400
+      expect(response.body).to match(/No configuration found/)
     end
   end
 

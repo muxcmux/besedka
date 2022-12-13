@@ -68,7 +68,6 @@ secret:              {}
 private:             {}
 anonymous:           {}
 moderated:           {}
-theme:               {}
 "#,
         cfg.site,
         "-".repeat(cfg.site.len()),
@@ -76,6 +75,5 @@ theme:               {}
         cfg.private,
         cfg.anonymous,
         cfg.moderated,
-        cfg.theme
     );
 }

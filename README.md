@@ -5,7 +5,9 @@ distributed as a single executable binary, which you can download and run on you
 
 ### Features
 
-* Portable, fast, small, and easy to setup
+* Portable and easy to setup - single executable binary without dependencies
+* Fast - written in Rust
+* Small - less than 5kb minified & gzipped
 * Free, open, no ads, no tracking, no bullshit
 * Markdown
 * Moderation
@@ -13,8 +15,8 @@ distributed as a single executable binary, which you can download and run on you
 * Integrate your existing users or allow anonymous commenting
 * [Web push](https://developer.mozilla.org/en-US/docs/Web/API/Push_API) notifications
 * Honeypot for trapping bots
-* Multiple configurations per domain
-* Themes 🎨 (or use your own CSS)
+* Multiple sites
+* Use your own CSS or pick one of the themes 🎨
 
 ### ⚡️ Quickstart
 
@@ -42,6 +44,18 @@ Finally put this div where you want your comments to appear:
 ```
 
 That's it!
+
+### Theme
+
+To keep things light and simple there is no CSS loaded for the commenting widget by default. You can
+add custom styles in your own site-wide stylesheet. Simply look at one of the existing themes for a
+reference to the used classes. Alternatively, you can include one of the theme stylesheets:
+
+```html
+<link href="https://your-besedka-server.com/themes/day_and_night.css" rel="stylesheet" />
+```
+
+More theme contributions are welcome!
 
 ### Multiple site configuration
 
@@ -155,6 +169,3 @@ results in a different signature than this:
 
 The `name` and `moderator` keys for the user object are required. The `avatar` key is optional.
 
-### Theme
-
-Besedka comes with a default `day_and_night` theme.

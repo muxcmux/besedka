@@ -11,7 +11,6 @@ pub struct Site {
     pub private: bool,
     pub anonymous: bool,
     pub moderated: bool,
-    pub theme: String,
 }
 
 impl Site {
@@ -60,7 +59,6 @@ pub async fn insert(db: &SqlitePool, args: &SitesCommandArgs) -> sqlx::Result<Si
     append(&args.private, "private", &mut insert, &mut values);
     append(&args.anonymous, "anonymous", &mut insert, &mut values);
     append(&args.moderated, "moderated", &mut insert, &mut values);
-    append(&args.theme, "theme", &mut insert, &mut values);
 
     insert.push_str(") ");
     values.push_str(")");
@@ -73,7 +71,6 @@ pub async fn insert(db: &SqlitePool, args: &SitesCommandArgs) -> sqlx::Result<Si
     if let Some(a) = args.private { result = result.bind(a) }
     if let Some(a) = args.anonymous { result = result.bind(a) }
     if let Some(a) = args.moderated { result = result.bind(a) }
-    if let Some(ref a) = args.theme { result = result.bind(a) }
 
     result = result.bind(&args.site);
 
@@ -90,7 +87,6 @@ pub async fn update(db: &SqlitePool, existing: Site, args: SitesCommandArgs) -> 
     if let Some(_) = args.private { update.push_str(", private = ?") };
     if let Some(_) = args.anonymous { update.push_str(", anonymous = ?") };
     if let Some(_) = args.moderated { update.push_str(", moderated = ?") };
-    if let Some(_) = args.theme { update.push_str(", theme = ?") };
 
     update.push_str(" WHERE site = ?");
 
@@ -101,7 +97,6 @@ pub async fn update(db: &SqlitePool, existing: Site, args: SitesCommandArgs) -> 
     if let Some(a) = args.private { result = result.bind(a) }
     if let Some(a) = args.anonymous { result = result.bind(a) }
     if let Some(a) = args.moderated { result = result.bind(a) }
-    if let Some(a) = args.theme { result = result.bind(a) }
 
     result = result.bind(&existing.site);
 

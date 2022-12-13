@@ -2,8 +2,8 @@ import { createButton, createElement, getToken, message, request } from "./utils
 
 export default class NewCommentForm {
   element: HTMLElement
-  button = createButton('Post', 'new-comment-post')
-  body = createElement<HTMLTextAreaElement>('textarea', 'new-comment-body', { placeholder: 'Leave a comment' })
+  button = createButton('Post', 'post-comment-button')
+  body = createElement<HTMLTextAreaElement>('textarea', 'comment-textarea', { placeholder: 'Leave a comment' })
   message = createElement<HTMLDivElement>('div')
   name?: HTMLInputElement
   parentId?: number
@@ -14,19 +14,21 @@ export default class NewCommentForm {
     this.element = element
     this.callback = callback
 
+    this.init()
     this.initUi()
     this.attachEvents()
   }
 
-  initUi() {
-    if (!window.__besedka.user.name) {
-      this.name = createElement<HTMLInputElement>('input', 'new-comment-author', { placeholder: 'Your name' })
-      this.element.prepend(this.name)
-    }
-
+  init() {
     const val = window.localStorage.getItem(this.storageKey())
     if (val) this.body.value = val
-    this.button.innerText = "Post"
+  }
+
+  initUi() {
+    if (!window.__besedka.user.name) {
+      this.name = createElement<HTMLInputElement>('input', 'comment-author-input', { placeholder: 'Your name' })
+      this.element.prepend(this.name)
+    }
 
     this.element.append(this.body, this.button, this.message)
   }
@@ -56,6 +58,8 @@ export default class NewCommentForm {
     return this.parentId ? `/api/comment/${this.parentId}` : '/api/comment'
   }
 
+  method(): string { return 'POST' }
+
   async comment(e: SubmitEvent) {
     e.preventDefault()
     if (!this.body.value.trim()) {
@@ -70,7 +74,7 @@ export default class NewCommentForm {
       try {
         const { json } = await request<PostCommentResponse>(this.url(), Object.assign({
           payload: { body, name, token }
-        }, window.__besedka.req), 'POST', this.message)
+        }, window.__besedka.req), this.method(), this.message)
 
         if (json) {
           this.callback(json)

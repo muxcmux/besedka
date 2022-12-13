@@ -3,8 +3,7 @@ CREATE TABLE sites (
   secret               BLOB NOT NULL UNIQUE DEFAULT (randomblob(48)),
   private              BOOLEAN NOT NULL DEFAULT 1,
   anonymous            BOOLEAN NOT NULL DEFAULT 0,
-  moderated            BOOLEAN NOT NULL DEFAULT 1,
-  theme                VARCHAR NOT NULL DEFAULT day_and_night
+  moderated            BOOLEAN NOT NULL DEFAULT 1
 );
 
 CREATE TRIGGER cleanup_sites_site AFTER INSERT ON sites
@@ -40,6 +39,7 @@ CREATE TABLE comments (
   parent_id     INTEGER REFERENCES comments(id) ON UPDATE CASCADE ON DELETE CASCADE,
   name          VARCHAR NOT NULL DEFAULT Anonymous,
   body          VARCHAR NOT NULL,
+  html_body     VARCHAR NOT NULL,
   avatar        TEXT,
   reviewed      BOOLEAN NOT NULL DEFAULT 0,
   created_at    DATETIME NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),

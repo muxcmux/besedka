@@ -36,3 +36,4 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 # rust-embed = { version = "6", features = ["debug-embed"] }
 rust-embed = "6"
 mime_guess = "2"
+markdown = "1.0.0-alpha.4"
