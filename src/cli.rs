@@ -68,13 +68,14 @@ pub enum SitesCommands {
     #[command(alias("delete"))]
     Remove { site: String },
     #[command(alias("create"))]
+    /// Add a site config
     Add(SitesCommandArgs),
     #[command(alias("edit"))]
+    /// Update a site config
     Update(SitesCommandArgs),
 }
 
 #[derive(Debug, Clone, Args)]
-/// Update a site config (creates if missing)
 pub struct SitesCommandArgs {
     pub site: String,
 
@@ -108,15 +109,16 @@ pub enum ModeratorsCommands {
 #[derive(Debug, Clone, Args)]
 /// Create or update a moderator
 pub struct ModeratorsAddCommandArgs {
-    #[arg(short, long)]
     /// Name to log in with also displayed in comments, must be unique
     pub name: String,
-    #[arg(short, long)]
     /// Password used for login
     pub password: String,
     #[arg(short, long)]
     /// Avatar - any valid src value for an img tag
-    pub avatar: Option<String>
+    pub avatar: Option<String>,
+    #[arg(long)]
+    /// Is this moderator also an OP
+    pub op: Option<bool>,
 }
 
 fn valid_file(s: &str) -> Result<String, anyhow::Error> {

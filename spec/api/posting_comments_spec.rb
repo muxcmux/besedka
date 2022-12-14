@@ -90,6 +90,16 @@ RSpec.describe 'Anonymous posting' do
       end
     end
 
+    context 'a signed user without a name' do
+      let(:s) { sign({ moderator: false }, site) }
+      let(:req) { { site: 'test', path: '/', user: s.first, signature: s.last, payload: { body: 'hello' } } }
+
+      it 'is not allowed to post' do
+        expect(response.status).to eq 400
+        expect(response.body).to match(/User name is required for non-anonymous sites/)
+      end
+    end
+
     context 'a logged in moderator' do
       let(:s) { sign({ name: 'moderator', moderator: true }, site) }
       let(:req) { { site: 'test', path: '/', user: s.first, signature: s.last, payload: { body: 'hello' } } }
@@ -131,6 +141,15 @@ RSpec.describe 'Moderation' do
 
       it 'must be reviewed' do
         expect(json[:comment]).to match(hash_including(id: 1, name: 'some user', body: 'hello', reviewed: false))
+      end
+    end
+
+    context 'a signed user that is the OP' do
+      let(:s) { sign({ name: 'some user', moderator: false, op: true }, site) }
+      let(:req) { { site: 'test', path: '/', user: s.first, signature: s.last, payload: { body: 'hello' } } }
+
+      it 'is automatically reviewed' do
+        expect(json[:comment]).to match(hash_including(id: 1, name: 'some user', body: 'hello', reviewed: true))
       end
     end
 
@@ -177,16 +196,25 @@ RSpec.describe 'Commenter name' do
 
   context 'a signed user' do
     let(:s) { sign({ name: 'signed user', moderator: false }, site) }
-    let(:req) { { site: 'test', path: '/', user: s.first, signature: s.last, payload: { body: 'hello' } } }
+    let(:req) { { site: 'test', path: '/', user: s.first, signature: s.last, payload: { name: 'yohoho', body: 'hello' } } }
 
     it 'cannot set their name' do
       expect(json[:comment]).to match(hash_including(id: 1, name: 'signed user', body: 'hello'))
     end
   end
 
-  context 'a moderator' do
-    let(:s) { sign({ name: 'moderator', moderator: true }, site) }
+  context 'a signed user wihout a name' do
+    let(:s) { sign({ moderator: false }, site) }
     let(:req) { { site: 'test', path: '/', user: s.first, signature: s.last, payload: { body: 'hello' } } }
+
+    it 'defaults to Anonymous' do
+      expect(json[:comment]).to match(hash_including(id: 1, name: 'Anonymous', body: 'hello'))
+    end
+  end
+
+  context 'a signed moderator' do
+    let(:s) { sign({ name: 'moderator', moderator: true }, site) }
+    let(:req) { { site: 'test', path: '/', user: s.first, signature: s.last, payload: { name: 'yohoho', body: 'hello' } } }
 
     it 'cannot set their name' do
       expect(json[:comment]).to match(hash_including(id: 1, name: 'moderator', body: 'hello'))

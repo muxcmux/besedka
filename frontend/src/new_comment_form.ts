@@ -1,6 +1,6 @@
 import { createButton, createElement, getToken, message, request } from "./utils"
 
-export default class NewCommentForm {
+export default class NewCommentForm<R> {
   element: HTMLElement
   button = createButton('Post', 'post-comment-button')
   body = createElement<HTMLTextAreaElement>('textarea', 'comment-textarea', { placeholder: 'Leave a comment' })
@@ -9,7 +9,11 @@ export default class NewCommentForm {
   parentId?: number
   callback: Function
 
-  constructor(element: HTMLFormElement, callback: (response: PostCommentResponse) => void, parentId?: number) {
+  constructor(
+    element: HTMLFormElement,
+    callback: (response: R) => void,
+    parentId?: number
+  ) {
     this.parentId = parentId
     this.element = element
     this.callback = callback
@@ -26,7 +30,7 @@ export default class NewCommentForm {
 
   initUi() {
     if (!window.__besedka.user.name) {
-      this.name = createElement<HTMLInputElement>('input', 'comment-author-input', { placeholder: 'Your name' })
+      this.name = createElement<HTMLInputElement>('input', 'comment-author-input', { placeholder: 'Your name?' })
       this.element.prepend(this.name)
     }
 
@@ -72,7 +76,7 @@ export default class NewCommentForm {
       const token = getToken()
 
       try {
-        const { json } = await request<PostCommentResponse>(this.url(), Object.assign({
+        const { json } = await request<R>(this.url(), Object.assign({
           payload: { body, name, token }
         }, window.__besedka.req), this.method(), this.message)
 

@@ -6,7 +6,7 @@ const TIME_TO_EDIT = 3 * 60
 
 export default class Comment {
   comment: CommentRecord
-  replyForm?: NewCommentForm
+  replyForm?: NewCommentForm<PostCommentResponse>
   replyButton?: HTMLButtonElement
 
   replies = createElement('ol', 'replies')
@@ -58,11 +58,13 @@ export default class Comment {
     return !this.comment.parent_id && !this.comment.locked && !window.__besedka.config?.locked
   }
 
-  buildComment({ created_at, html_body, name, reviewed, locked, owned, edited }: CommentRecord) {
+  buildComment({ created_at, html_body, name, reviewed, locked, owned, edited, op, moderator }: CommentRecord) {
     if (!reviewed) this.element.classList.add('besedka-unreviewed-comment')
     if (locked) this.element.classList.add('besedka-locked-comment')
     if (owned) this.element.classList.add('besedka-owned-comment')
     if (edited) this.element.classList.add('besedka-edited-comment')
+    if (moderator) this.element.classList.add('besedka-moderator-comment')
+    if (op) this.element.classList.add('besedka-op-comment')
 
     this.author.textContent = name
     this.date.textContent = created_at.toLocaleString(navigator.language, { dateStyle: "medium", timeStyle: "short" })
@@ -114,10 +116,10 @@ export default class Comment {
       button.hidden = true
       this.body.hidden = true
       const form = createElement<HTMLFormElement>('form', 'edit-comment')
-      const editForm = new EditCommentForm(form, this.comment, ({ comment }) => {
-        this.comment.html_body = comment.html_body
-        this.comment.body = comment.body
-        this.body.innerHTML = comment.html_body
+      const editForm = new EditCommentForm<UpdateCommentResponse>(form, this.comment, ({ body, html_body }) => {
+        this.comment.html_body = html_body
+        this.comment.body = body
+        this.body.innerHTML = html_body
         this.body.hidden = false
         this.body.classList.add('besedka-edited-comment')
         editForm.destroy()

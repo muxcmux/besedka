@@ -35,8 +35,8 @@ export function createElement<T extends HTMLElement>(el: string, className?: str
   return element
 }
 
-export function createButton(text: string, className?: string): HTMLButtonElement {
-  const button = createElement<HTMLButtonElement>('button', className)
+export function createButton(text: string, className?: string, attributes?: {}): HTMLButtonElement {
+  const button = createElement<HTMLButtonElement>('button', className, attributes)
   button.textContent = text
   return button
 }

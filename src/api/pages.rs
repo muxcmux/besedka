@@ -1,18 +1,20 @@
-use crate::{api::{ApiRequest, Context, Result}, db::pages::{create_or_find_by_site_and_path, toggle_lock}};
+use crate::{api::{ApiRequest, Context, Result}, db::pages::{create_or_find_by_site_and_path, self}};
 use axum::{routing::patch, Json, Router};
 
-use super::PageConfig;
+use super::{PageConfig, require_moderator};
 
 pub fn router() -> Router {
-    Router::new().route("/api/pages", patch(page))
+    Router::new().route("/api/pages", patch(toggle_lock))
 }
 
-async fn page(ctx: Context, Json(req): Json<ApiRequest<()>>) -> Result<Json<PageConfig>> {
-    let (site, _) = req.extract_verified(&ctx.db).await?;
+async fn toggle_lock(ctx: Context, Json(req): Json<ApiRequest<()>>) -> Result<Json<PageConfig>> {
+    let (site, user) = req.extract_verified(&ctx.db).await?;
+
+    require_moderator(&user)?;
 
     let page = create_or_find_by_site_and_path(&ctx.db, &req.site, &req.path).await?;
 
-    toggle_lock(&ctx.db, page.id).await?;
+    pages::toggle_lock(&ctx.db, page.id).await?;
 
     Ok(Json(PageConfig {
         anonymous: site.anonymous,

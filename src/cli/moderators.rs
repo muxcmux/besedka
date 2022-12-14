@@ -47,11 +47,13 @@ fn print_moderator(moderator: Moderator) {
     println!(r#"
 {}
 {}
+op: {}
 avatar: {}
 "#,
         moderator.name,
         "-".repeat(moderator.name.len()),
-        moderator.avatar.unwrap_or(String::from("-"))
+        moderator.op,
+        match moderator.avatar_id { Some(_) => "Yes", None => "No" }
     )
 }
 

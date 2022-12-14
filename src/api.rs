@@ -21,7 +21,7 @@ pub type Context = Extension<Arc<AppContext>>;
 
 pub use error::Error;
 
-use crate::db::{self, sites::Site, moderators::{Moderator, self}, pages::Page};
+use crate::db::{self, sites::Site, moderators::{Moderator, self}, pages::Page, avatars::{self, Avatar}};
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -37,19 +37,47 @@ impl Cursor {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
+struct SignedUser {
+    name: Option<String>,
+    avatar: Option<String>,
+    moderator: Option<bool>,
+    op: Option<bool>,
+}
+
 struct User {
     name: String,
-    avatar: Option<String>,
     moderator: bool,
+    op: bool,
+    avatar: Option<Avatar>,
 }
 
 impl User {
-    fn from_moderator(moderator: Moderator) -> Self {
-        Self {
-            name: moderator.name,
-            avatar: moderator.avatar,
-            moderator: true,
-        }
+    async fn from_moderator(db: &SqlitePool, moderator: Moderator) -> Result<Self> {
+        Ok(
+            Self {
+                name: moderator.name,
+                moderator: true,
+                op: moderator.op,
+                avatar: match moderator.avatar_id {
+                    None => None,
+                    Some(id) => avatars::find(db, id).await?,
+                }
+            }
+        )
+    }
+
+    async fn from_signed_user(db: &SqlitePool, user: SignedUser) -> Result<Self> {
+        Ok(
+            Self {
+                name: user.name.unwrap_or(String::from("Anonymous")),
+                moderator: user.moderator.unwrap_or(false),
+                op: user.op.unwrap_or(false),
+                avatar: match user.avatar {
+                    None => None,
+                    Some(data) => Some(avatars::find_or_create(db, &data).await?),
+                }
+            }
+        )
     }
 }
 
@@ -107,7 +135,7 @@ impl<T> ApiRequest<T> {
         if let Some(ref sid) = self.sid {
             match moderators::find_by_sid(db, sid).await {
                 Err(_) => return Err(Error::Unauthorized),
-                Ok(moderator) => return Ok((site, Some(User::from_moderator(moderator)))),
+                Ok(moderator) => return Ok((site, Some(User::from_moderator(db, moderator).await?))),
             }
         }
 
@@ -119,7 +147,11 @@ impl<T> ApiRequest<T> {
                     hmac::verify(&site.key(), json_bytes, s)
                         .map_err(|_| Error::BadRequest("Cannot verify user object"))?;
                     // ok the signature is good
-                    Some(serde_json::from_slice(json_bytes)?)
+                    let signed_user: SignedUser = serde_json::from_slice(json_bytes)?;
+                    if !site.anonymous && signed_user.name.is_none() {
+                        return Err(Error::BadRequest("User name is required for non-anonymous sites"))
+                    }
+                    Some(User::from_signed_user(db, signed_user).await?)
                 }
             }
         };

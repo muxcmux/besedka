@@ -28,7 +28,7 @@ export default class ModeratorControls {
   }
 
   buildLogout() {
-    const logout = createButton('Logout', 'logout')
+    const logout = createButton('Logout', 'logout', { title: 'Logout' })
     this.element.append(logout)
     logout.addEventListener('click', () => {
       window.localStorage.removeItem('__besedka_mod')
@@ -48,12 +48,12 @@ export default class ModeratorControls {
   }
 
   buildLogin() {
-    const loginButton = createButton('Login', 'login')
+    const loginButton = createButton('Login', 'login', { title: 'Login' })
     const { msg, modal } = this.buildModal()
     const form = createElement<HTMLFormElement>('form')
     const name = createElement<HTMLInputElement>('input', 'login-name', { placeholder: 'Login name' })
     const pass = createElement<HTMLInputElement>('input', 'login-password', { placeholder: 'password', type: 'password' })
-    const login = createButton('Login')
+    const login = createButton('Login', '', { title: 'Login' })
 
     form.append(name, pass, login)
     modal.append(form)
@@ -93,7 +93,7 @@ export default class ModeratorControls {
   buildLock() {
     const locked = window.__besedka.config?.locked
     const [text, klass] = locked ? ['Unlock page', 'unlock-page'] : ['Lock page', 'lock-page']
-    const lock = createButton(text, klass)
+    const lock = createButton(text, klass, { title: text })
     lock.addEventListener('click', async () => {
       lock.disabled = true
       try {

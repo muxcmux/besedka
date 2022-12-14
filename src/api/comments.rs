@@ -3,7 +3,7 @@ use crate::{
     db::{
         comments::{Comment, self},
         pages::{Page, self},
-        sites::Site,
+        sites::Site, avatars::{self, Avatar},
     },
 };
 use axum::{extract::Path, routing::post, Json, Router};
@@ -32,10 +32,12 @@ struct CommentWithReplies {
     name: String,
     html_body: String,
     body: String,
-    avatar: Option<String>,
+    avatar_id: Option<i64>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     reviewed: bool,
+    op: bool,
+    moderator: bool,
     owned: bool,
     edited: bool,
     replies: Vec<OwnedComment>,
@@ -48,10 +50,12 @@ struct OwnedComment {
     name: String,
     html_body: String,
     body: String,
-    avatar: Option<String>,
+    avatar_id: Option<i64>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     reviewed: bool,
+    op: bool,
+    moderator: bool,
     owned: bool,
     edited: bool,
 }
@@ -61,6 +65,7 @@ struct CommentsPage {
     total: i64,
     cursor: Option<String>,
     comments: Vec<CommentWithReplies>,
+    avatars: Vec<Avatar>,
 }
 
 #[derive(Deserialize)]
@@ -75,6 +80,7 @@ const COMMENTS_PER_PAGE: i64 = 42;
 fn comments_page(
     parents: Vec<Comment>,
     all_replies: Vec<Comment>,
+    avatars: Vec<Avatar>,
     total: i64,
     token: &Option<Base64>,
 ) -> CommentsPage {
@@ -103,14 +109,16 @@ fn comments_page(
             replies.push(OwnedComment {
                 id: r.id,
                 parent_id: r.parent_id,
+                avatar_id: r.avatar_id,
                 name: r.name,
                 html_body: r.html_body,
                 body: r.body,
-                avatar: r.avatar,
                 created_at: r.created_at,
                 updated_at: r.updated_at,
                 reviewed: r.reviewed,
                 edited: r.created_at != r.updated_at,
+                op: r.op,
+                moderator: r.moderator,
                 owned,
             })
         }
@@ -122,14 +130,16 @@ fn comments_page(
 
         comments.push(CommentWithReplies {
             id: parent.id,
+            avatar_id: parent.avatar_id,
             name: parent.name,
             html_body: parent.html_body,
             body: parent.body,
-            avatar: parent.avatar,
             created_at: parent.created_at,
             updated_at: parent.updated_at,
             reviewed: parent.reviewed,
             edited: parent.created_at != parent.updated_at,
+            op: parent.op,
+            moderator: parent.moderator,
             owned,
             replies,
         });
@@ -151,6 +161,7 @@ fn comments_page(
 
     CommentsPage {
         comments,
+        avatars,
         cursor,
         total,
     }
@@ -187,16 +198,32 @@ async fn index(
         cursor
     ).await?;
 
-    let replies = comments::nested_replies(
+    let replies = comments::replies(
         &ctx.db,
         show_only_reviewed,
         req.payload.as_ref().map_or(&None, |p| &p.token),
         &parents
     ).await?;
 
+    let mut all_comment_ids = parents.iter()
+        .flat_map(|p| p.avatar_id)
+        .collect::<Vec<i64>>();
+
+    let replies_ids = replies.iter()
+        .flat_map(|r| r.avatar_id)
+        .collect::<Vec<i64>>();
+
+    all_comment_ids.extend(replies_ids);
+
+    let avatars = avatars::find_all_by_id(
+        &ctx.db,
+        all_comment_ids,
+    ).await?;
+
     Ok(Json(comments_page(
         parents,
         replies,
+        avatars,
         total,
         req.payload.as_ref().map_or(&None, |p| &p.token),
     )))
@@ -206,6 +233,7 @@ async fn index(
 struct PostCommentResponse {
     token: Base64,
     comment: OwnedComment,
+    avatar: Option<Avatar>
 }
 /// POST /api/comment
 async fn create(
@@ -260,19 +288,30 @@ async fn post_comment(
 
             authorize_posting(&site, &user, &page)?;
 
+            // Use the api user name (could be anonymous)
+            // or set the name to Anonymous
             let anon = String::from("Anonymous");
-            let (mut name, avatar) = user
-                .as_ref()
-                .map_or((data.name.as_ref().unwrap_or(&anon), None), |c| {
-                    (&c.name, c.avatar.as_ref())
-                });
+            let mut name = user.as_ref()
+                .map_or(data.name.as_ref().unwrap_or(&anon), |c| &c.name);
             if name.trim() == "" { name = &anon }
 
-            let reviewed_at = !site.moderated || (user.is_some() && user.as_ref().unwrap().moderator);
+            // Auto review if the user is a moderator or an op or moderation is disabled
+            let op = user.is_some() && user.as_ref().unwrap().op;
+            let moderator = user.is_some() && user.as_ref().unwrap().moderator;
+            let reviewed = !site.moderated || op || moderator;
 
             let comment = comments::create(
-                db, page.id, parent_id, &name, &get_markdown(&data.body)?, &data.body, &avatar,
-                reviewed_at, data.token.as_ref().unwrap_or(&generate_random_token())
+                db,
+                page.id,
+                parent_id,
+                user.as_ref().and_then(|u| u.avatar.as_ref().and_then(|a| Some(a.id))),
+                &name,
+                &get_markdown(&data.body)?,
+                &data.body,
+                reviewed,
+                op,
+                moderator,
+                data.token.as_ref().unwrap_or(&generate_random_token()),
             ).await?;
 
             let owned = match &data.token {
@@ -283,17 +322,20 @@ async fn post_comment(
             Ok(Json({
                 PostCommentResponse {
                     token: comment.token,
+                    avatar: user.and_then(|u| u.avatar),
                     comment: OwnedComment {
                         id: comment.id,
                         parent_id: comment.parent_id,
+                        avatar_id: comment.avatar_id,
                         html_body: comment.html_body,
                         name: comment.name,
                         body: comment.body,
-                        avatar: comment.avatar,
                         created_at: comment.created_at,
                         updated_at: comment.updated_at,
                         reviewed: comment.reviewed,
                         edited: comment.created_at != comment.updated_at,
+                        op: comment.op,
+                        moderator: comment.moderator,
                         owned,
                     }
                 }
@@ -319,12 +361,17 @@ fn ensure_modifiable(user: Option<&User>, token: Option<&Base64>, comment: &Comm
     }
 }
 
+#[derive(Serialize)]
+struct UpdateCommentResponse {
+    body: String,
+    html_body: String,
+}
 /// PUT /api/comment/42
 async fn update(
     ctx: Context,
     Path(comment_id): Path<i64>,
     Json(req): Json<ApiRequest<CommentData>>,
-) -> Result<Json<PostCommentResponse>> {
+) -> Result<Json<UpdateCommentResponse>> {
     match req.payload {
         None => Err(Error::UnprocessableEntity("Payload can't be blank")),
         Some(ref data) => {
@@ -342,27 +389,10 @@ async fn update(
 
             let updated_comment = comments::update(&ctx.db, comment_id, &get_markdown(&data.body)?, &data.body).await?;
 
-            let owned = match &data.token {
-                None => false,
-                Some(t) => t == &comment.token
-            };
-
             Ok(
-                Json(PostCommentResponse {
-                    token: updated_comment.token,
-                    comment: OwnedComment {
-                        id: updated_comment.id,
-                        parent_id: updated_comment.parent_id,
-                        html_body: updated_comment.html_body,
-                        name: updated_comment.name,
-                        body: updated_comment.body,
-                        avatar: updated_comment.avatar,
-                        created_at: updated_comment.created_at,
-                        updated_at: updated_comment.updated_at,
-                        reviewed: updated_comment.reviewed,
-                        edited: updated_comment.created_at != updated_comment.updated_at,
-                        owned,
-                    }
+                Json(UpdateCommentResponse {
+                    html_body: updated_comment.html_body,
+                    body: updated_comment.body,
                 })
             )
         }

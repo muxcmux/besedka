@@ -3,8 +3,8 @@ module CliHelper
     command('sites', 'add', site, **kwargs).lines.find { |l| l.match(/^secret:/) }.split(':').last.strip
   end
 
-  def add_moderator(name: 'test', password: 'test')
-    command('moderators', 'add', name:, password:)
+  def add_moderator(name = 'test', password = 'test', **kwargs)
+    command('moderators', 'add', name, password, **kwargs)
     { name:, password: }
   end
 

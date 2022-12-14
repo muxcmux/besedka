@@ -36,9 +36,7 @@ async fn login(
         .map_err(|_| Error::Unauthorized)?;
 
     let sid = generate_random_token();
-    moderator.set_sid(&ctx.db, &sid).await;
-
-    moderator.sid = Some(sid);
+    moderator.set_sid(&ctx.db, sid).await;
 
     Ok(Json(moderator))
 }

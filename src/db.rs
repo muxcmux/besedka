@@ -1,4 +1,5 @@
 pub mod comments;
+pub mod avatars;
 pub mod pages;
 pub mod sites;
 pub mod moderators;

@@ -10,11 +10,13 @@ pub struct Comment {
     pub id: i64,
     pub page_id: i64,
     pub parent_id: Option<i64>,
+    pub avatar_id: Option<i64>,
     pub name: String,
     pub html_body: String,
     pub body: String,
-    pub avatar: Option<String>,
     pub reviewed: bool,
+    pub moderator: bool,
+    pub op: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub token: Base64,
@@ -26,7 +28,8 @@ pub async fn find(db: &SqlitePool, id: i64) -> sqlx::Result<Comment> {
             Comment,
             r#"
                 SELECT
-                id, page_id, parent_id, name, html_body, body, avatar, reviewed,
+                id, page_id, parent_id, avatar_id, name,
+                html_body, body, reviewed, moderator, op,
                 created_at as "created_at: DateTime<Utc>",
                 updated_at as "updated_at: DateTime<Utc>",
                 token as "token: Base64"
@@ -63,7 +66,8 @@ pub async fn find_root(db: &SqlitePool, id: i64) -> sqlx::Result<Comment> {
             Comment,
             r#"
                 SELECT
-                id, page_id, parent_id, name, html_body, body, avatar, reviewed,
+                id, page_id, parent_id, avatar_id, name,
+                html_body, body, reviewed, moderator, op,
                 created_at as "created_at: DateTime<Utc>",
                 updated_at as "updated_at: DateTime<Utc>",
                 token as "token: Base64"
@@ -83,8 +87,10 @@ pub async fn root_comments(
     cursor: Option<Cursor>,
 ) -> Result<(i64, Vec<Comment>)> {
     let mut select = String::from(r#"
-        SELECT id, page_id, parent_id, name, html_body, body, avatar,
-        reviewed, created_at, updated_at, token
+        SELECT
+        id, page_id, parent_id, avatar_id, name,
+        html_body, body, reviewed, moderator, op,
+        created_at, updated_at, token
     "#);
 
     let mut count = String::from("SELECT count(*)");
@@ -151,7 +157,7 @@ pub async fn root_comments(
     Ok((total.fetch_one(db).await?.get(0), results.fetch_all(db).await?))
 }
 
-pub async fn nested_replies(
+pub async fn replies(
     db: &SqlitePool,
     reviewed_only: bool,
     token: &Option<Base64>,
@@ -172,8 +178,9 @@ pub async fn nested_replies(
     let query = format!(
         r#"
             SELECT
-                id, page_id, parent_id, name, html_body, body, avatar,
-                reviewed, created_at, updated_at, token
+                id, page_id, parent_id, avatar_id, name,
+                html_body, body, reviewed, moderator, op,
+                created_at, updated_at, token
             FROM comments
             WHERE parent_id IN({ids})
             {condition}
@@ -192,99 +199,38 @@ pub async fn nested_replies(
     Ok(results.fetch_all(db).await?)
 }
 
-pub async fn replies(
-    db: &SqlitePool,
-    parent_id: i64,
-    limit: i64,
-    cursor: Option<Cursor>,
-    reviewed_only: bool,
-    token: &Option<Base64>,
-) -> Result<Vec<Comment>> {
-
-    let mut condition = "".to_string();
-    if reviewed_only {
-        if token.is_some() {
-            condition.push_str("AND (reviewed = 1 OR token = ?)");
-        } else {
-            condition.push_str("AND reviewed = 1");
-        }
-    }
-
-    let mut _q = String::from("");
-
-    let mut query = match cursor {
-        Some(cur) => {
-            _q = format!(
-                r#"
-                    SELECT id, page_id, parent_id, name, html_body, body, avatar,
-                    reviewed, created_at, updated_at, token
-                    FROM comments
-                    WHERE parent_id = ?
-                    AND (created_at > ? OR (created_at = ? AND id > ?))
-                    {condition}
-                    ORDER BY created_at, id
-                    LIMIT ?
-                "#,
-                condition = condition
-            );
-            query_as::<_, Comment>(&_q)
-                .bind(parent_id)
-                .bind(format!("{}", cur.created_at.format(UTC_DATETIME_FORMAT)))
-                .bind(format!("{}", cur.created_at.format(UTC_DATETIME_FORMAT)))
-                .bind(cur.id)
-        },
-        None => {
-            _q = format!(
-                r#"
-                    SELECT id, page_id, parent_id, name, html_body, body, avatar,
-                    reviewed, created_at, updated_at, token
-                    FROM comments
-                    WHERE parent_id = ?
-                    {condition}
-                    ORDER BY created_at, id
-                    LIMIT ?
-                "#,
-                condition = condition
-            );
-            query_as::<_, Comment>(&_q)
-                .bind(parent_id)
-        }
-    };
-
-    if reviewed_only {
-        if let Some(t) = token { query = query.bind(t) }
-    }
-
-    Ok(query.bind(limit).fetch_all(db).await?)
-}
-
 pub async fn create(
     db: &SqlitePool,
     page_id: i64,
     parent_id: Option<i64>,
+    avatar_id: Option<i64>,
     name: &str,
     html_body: &str,
     body: &str,
-    avatar: &Option<&String>,
     reviewed: bool,
+    op: bool,
+    moderator: bool,
     token: &Base64,
 ) -> sqlx::Result<Comment> {
     let mut tx = db.begin().await?;
 
     let comment = query_as::<_, Comment>(
             r#"
-                INSERT INTO comments (page_id, parent_id, name, html_body, body, avatar, reviewed, token)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO comments
+                (page_id, parent_id, avatar_id, name, html_body, body, reviewed, op, moderator, token)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 RETURNING *
             "#
         )
         .bind(page_id)
         .bind(parent_id)
+        .bind(avatar_id)
         .bind(name)
         .bind(html_body)
         .bind(body)
-        .bind(avatar)
         .bind(reviewed)
+        .bind(op)
+        .bind(moderator)
         .bind(token)
         .fetch_one(&mut tx)
         .await?;

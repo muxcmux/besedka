@@ -5,18 +5,14 @@ distributed as a single executable binary, which you can download and run on you
 
 ### Features
 
-* Portable and easy to setup - single executable binary without dependencies
-* Fast - written in Rust
-* Small - less than 5kb minified & gzipped
+* Portable (single binary), small (< 5kb), fast
 * Free, open, no ads, no tracking, no bullshit
 * Markdown
 * Moderation
 * No social logins, No user registration, confirmation emails, etc.
 * Integrate your existing users or allow anonymous commenting
-* [Web push](https://developer.mozilla.org/en-US/docs/Web/API/Push_API) notifications
-* Honeypot for trapping bots
 * Multiple sites
-* Use your own CSS or pick one of the themes 🎨
+* Use your own CSS or pick one of the themes
 
 ### ⚡️ Quickstart
 
@@ -45,14 +41,14 @@ Finally put this div where you want your comments to appear:
 
 That's it!
 
-### Theme
+### 🎨 Styling
 
 To keep things light and simple there is no CSS loaded for the commenting widget by default. You can
 add custom styles in your own site-wide stylesheet. Simply look at one of the existing themes for a
-reference to the used classes. Alternatively, you can include one of the theme stylesheets:
+reference to the used classes. Alternatively, you can include a theme stylesheet:
 
 ```html
-<link href="https://your-besedka-server.com/themes/day_and_night.css" rel="stylesheet" />
+<link href="https://your-besedka-server.com/themes/default.css" rel="stylesheet" />
 ```
 
 More theme contributions are welcome!
@@ -77,7 +73,7 @@ This will only remove the site config. Comments will remain intact
 
 A moderator can either be set with a signed user object, or one can be added from the CLI:
 
-    $ besedka moderators add --name "Brian Kernighan" --password l3g3nd4ry_h4x0r
+    $ besedka moderators add "Brian Kernighan" l3g3nd4ry_h4x0r
 
 ### Overriding the site config and the page for which comments are loaded
 
@@ -111,6 +107,7 @@ configuration one:
 {
   "name": "John Doe",
   "moderator": true,
+  "op": true,
   "avatar": "data:image/png;base64,..."
 }
 </script>
@@ -127,7 +124,7 @@ comments. Signing the user object **MUST** happen on your back-end.
 
 OK, now that you have been warned, let's sign the message. First, grab the secret from the config:
 
-    $ ./besedka sites get my.blog.com
+    $ besedka sites get my.blog.com
 
 You should see the `base64` encoded secret. To get the signature of a user object, you have to
 obtain a SHA256 HMAC digest and then `base64` encode it. Here's how you would do that in Ruby:
@@ -167,5 +164,6 @@ results in a different signature than this:
 {"name":"Dennis Ritchie","moderator":true}
 ```
 
-The `name` and `moderator` keys for the user object are required. The `avatar` key is optional.
+All user keys are optional except when the site configuration doesn't allow anonymous posting. In
+such case, you must pass a signed user with at least a `name` key that is not empty
 

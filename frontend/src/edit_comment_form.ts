@@ -1,7 +1,7 @@
 import NewCommentForm from "./new_comment_form"
 import { createButton } from "./utils"
 
-export default class EditCommentForm extends NewCommentForm {
+export default class EditCommentForm<R> extends NewCommentForm<R> {
   commentRecord?: CommentRecord
   cancel?: HTMLButtonElement
   onCancel: Function
@@ -9,7 +9,7 @@ export default class EditCommentForm extends NewCommentForm {
   constructor(
     element: HTMLFormElement,
     comment: CommentRecord,
-    callback: (response: PostCommentResponse) => void,
+    callback: (response: R) => void,
     onCancel: () => void
   ) {
     super(element, callback)
@@ -26,8 +26,7 @@ export default class EditCommentForm extends NewCommentForm {
   }
 
   initUi() {
-    this.cancel = createButton('Cancel', 'cancel-editing')
-    this.cancel.setAttribute('type', 'button')
+    this.cancel = createButton('Cancel', 'cancel-editing', { type: 'button' })
     this.cancel.addEventListener('click', () => {
       this.destroy()
       this.onCancel()

@@ -85,13 +85,10 @@ RSpec.describe 'Editing a comment with good data' do
     it 'updates the comment' do
       expect(response.status).to eq(200)
       expect(json).to match(
-        hash_including(
-          comment: hash_including(
-            body: 'updated *comment*',
-            html_body: '<p>updated <em>comment</em></p>',
-            edited: true
-          )
-        )
+        {
+          body: 'updated *comment*',
+          html_body: '<p>updated <em>comment</em></p>'
+        }
       )
     end
   end
@@ -103,13 +100,10 @@ RSpec.describe 'Editing a comment with good data' do
     it 'updates the comment' do
       expect(response.status).to eq(200)
       expect(json).to match(
-        hash_including(
-          comment: hash_including(
-            body: 'updated *comment*',
-            html_body: '<p>updated <em>comment</em></p>',
-            edited: true
-          )
-        )
+        {
+          body: 'updated *comment*',
+          html_body: '<p>updated <em>comment</em></p>'
+        }
       )
     end
   end
