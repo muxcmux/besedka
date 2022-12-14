@@ -25,8 +25,7 @@ RSpec.describe 'Single page of comments' do
           hash_including(id: 1, name: 'Anonymous', body: 'hello world 0', replies: [])
         ],
         cursor: nil,
-        total: 5,
-        avatars: []
+        total: 5
       )
     )
   end
@@ -59,8 +58,7 @@ RSpec.describe 'Multiple pages of comments' do
     expect(response).to match(
       hash_including(
         comments: first_page_comments,
-        total: 50,
-        avatars: []
+        total: 50
       )
     )
 
@@ -80,8 +78,7 @@ RSpec.describe 'Multiple pages of comments' do
     expect(second_page).to match(
       hash_including(
         comments: second_page_comments,
-        total: 50,
-        avatars: []
+        total: 50
       )
     )
 
@@ -163,8 +160,7 @@ RSpec.describe 'Filtering comments' do
           comments: [
             hash_including(id: 1, name: 'moderator', body: 'Reviewed comment', reviewed: true)
           ],
-          total: 1,
-          avatars: []
+          total: 1
         )
       )
     end
@@ -183,8 +179,7 @@ RSpec.describe 'Filtering comments' do
             hash_including(id: 3, name: 'Anonymous', body: 'Another unreviewed comment', reviewed: false, owned: true),
             hash_including(id: 1, name: 'moderator', body: 'Reviewed comment', reviewed: true, owned: false)
           ],
-          total: 2,
-          avatars: []
+          total: 2
         )
       )
     end
@@ -204,8 +199,7 @@ RSpec.describe 'Filtering comments' do
             hash_including(id: 2, name: 'Anonymous', body: 'Unreviewed comment', reviewed: false),
             hash_including(id: 1, name: 'moderator', body: 'Reviewed comment', reviewed: true)
           ],
-          total: 3,
-          avatars: []
+          total: 3
         )
       )
     end
@@ -234,8 +228,7 @@ RSpec.describe 'Filtering comments' do
                 ]
               )
             ],
-            total: 1,
-            avatars: []
+            total: 1
           )
         )
       end
@@ -257,8 +250,7 @@ RSpec.describe 'Filtering comments' do
                 ]
               )
             ],
-            total: 1,
-            avatars: []
+            total: 1
           )
         )
       end
@@ -282,40 +274,10 @@ RSpec.describe 'Filtering comments' do
                 ]
               )
             ],
-            total: 3,
-            avatars: []
+            total: 3
           )
         )
       end
     end
-  end
-end
-
-RSpec.describe 'listing comments with avatars' do
-  let(:site) { add_site('test', private: false, anonymous: true, moderated: false) }
-  let(:s1) { sign({ name: 'some user', avatar: 'avatar1' }, site) }
-  let(:s2) { sign({ name: 'another user', avatar: 'avatar2' }, site) }
-  let(:s3) { sign({ name: 'third user', avatar: 'avatar1' }, site) }
-  let(:moderator) { add_moderator('test', 'test', avatar: 'moderator_avatar') }
-  let(:sid) { JSON.parse(post('/api/login', moderator).body)['sid'] }
-
-  before do
-    post('/api/comment', { site: 'test', path: '/', user: s1.first, signature: s1.last, payload: { body: 'user 1 comment' } })
-    post('/api/comment', { site: 'test', path: '/', payload: { body: "hello world" } })
-    post('/api/comment/1', { site: 'test', path: '/', user: s2.first, signature: s2.last, payload: { body: 'user 2 comment' } })
-    post('/api/comment', { site: 'test', path: '/', user: s3.first, signature: s3.last, payload: { body: 'user 3 comment' } })
-    post('/api/comment/2', { site: 'test', path: '/', sid:, payload: { body: 'moderator comment' } })
-  end
-
-  it 'returns avatars for comments and replies' do
-    expect(get_comments).to match(
-      hash_including(
-        avatars: [
-          { id: 1, data: 'avatar1' },
-          { id: 2, data: 'avatar2' },
-          { id: 3, data: 'moderator_avatar' }
-        ]
-      )
-    )
   end
 end

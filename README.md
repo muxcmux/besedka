@@ -108,7 +108,7 @@ configuration one:
   "name": "John Doe",
   "moderator": true,
   "op": true,
-  "avatar": "data:image/png;base64,..."
+  "avatar": "https://mysite.com/avatars/johndoe.png"
 }
 </script>
 ```
@@ -165,5 +165,6 @@ results in a different signature than this:
 ```
 
 All user keys are optional except when the site configuration doesn't allow anonymous posting. In
-such case, you must pass a signed user with at least a `name` key that is not empty
+such case, you must pass a signed user with at least a `name` key that is not empty. The `avatar`
+key should be any valid `src` value for an `<img />` tag.
 

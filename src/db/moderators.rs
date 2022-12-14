@@ -9,21 +9,19 @@ use argon2::{
     Argon2
 };
 
-use super::avatars;
-
 #[derive(FromRow, Debug, Serialize)]
     pub struct Moderator {
     pub name: String,
     #[serde(skip_serializing)]
     pub password: String,
     pub op: bool,
-    pub avatar_id: Option<i64>,
+    pub avatar: Option<String>,
     pub sid: Option<Base64>,
 }
 
 /// Returns all moderators for a given site
 pub async fn all(db: &SqlitePool) -> anyhow::Result<Vec<Moderator>> {
-    let users = query_as!(Moderator, r#"SELECT name, password, avatar_id, op, sid as "sid: Base64" FROM moderators"#)
+    let users = query_as!(Moderator, r#"SELECT name, password, avatar, op, sid as "sid: Base64" FROM moderators"#)
         .fetch_all(db).await?;
     Ok(users)
 }
@@ -55,22 +53,17 @@ pub async fn insert_moderator(
         .unwrap()
         .to_string();
 
-    let avatar = match moderator.avatar {
-        None => None,
-        Some(data) => Some(avatars::find_or_create(db, &data).await?),
-    };
-
     Ok(
         query_as::<_, Moderator>(
             r#"
-                INSERT INTO moderators (name, password, avatar_id, op)
+                INSERT INTO moderators (name, password, avatar, op)
                 VALUES(?, ?, ?, ?);
                 SELECT * FROM moderators WHERE name = ? LIMIT 1
             "#,
         )
         .bind(&moderator.name)
         .bind(&password_hash)
-        .bind(&avatar.and_then(|a| Some(a.id)))
+        .bind(&moderator.avatar)
         .bind(&moderator.op.unwrap_or(false))
         .bind(&moderator.name)
         .fetch_one(db)
@@ -80,7 +73,7 @@ pub async fn insert_moderator(
 
 pub async fn find_by_sid(db: &SqlitePool, sid: &Base64) -> Result<Moderator> {
     Ok(
-        query_as!(Moderator, r#"SELECT name, password, avatar_id, op, sid as "sid: Base64" FROM moderators WHERE sid = ? LIMIT 1"#, sid)
+        query_as!(Moderator, r#"SELECT name, password, avatar, op, sid as "sid: Base64" FROM moderators WHERE sid = ? LIMIT 1"#, sid)
             .fetch_one(db)
             .await?
     )
@@ -88,7 +81,7 @@ pub async fn find_by_sid(db: &SqlitePool, sid: &Base64) -> Result<Moderator> {
 
 pub async fn find_by_name(db: &SqlitePool, name: &str) -> Result<Moderator> {
     Ok(
-        query_as!(Moderator, r#"SELECT name, password, avatar_id, op, sid as "sid: Base64" FROM moderators WHERE name = ? LIMIT 1"#, name)
+        query_as!(Moderator, r#"SELECT name, password, avatar, op, sid as "sid: Base64" FROM moderators WHERE name = ? LIMIT 1"#, name)
             .fetch_one(db)
             .await?
     )

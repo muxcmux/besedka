@@ -10,7 +10,7 @@ pub struct Comment {
     pub id: i64,
     pub page_id: i64,
     pub parent_id: Option<i64>,
-    pub avatar_id: Option<i64>,
+    pub avatar: Option<String>,
     pub name: String,
     pub html_body: String,
     pub body: String,
@@ -28,7 +28,7 @@ pub async fn find(db: &SqlitePool, id: i64) -> sqlx::Result<Comment> {
             Comment,
             r#"
                 SELECT
-                id, page_id, parent_id, avatar_id, name,
+                id, page_id, parent_id, avatar, name,
                 html_body, body, reviewed, moderator, op,
                 created_at as "created_at: DateTime<Utc>",
                 updated_at as "updated_at: DateTime<Utc>",
@@ -66,7 +66,7 @@ pub async fn find_root(db: &SqlitePool, id: i64) -> sqlx::Result<Comment> {
             Comment,
             r#"
                 SELECT
-                id, page_id, parent_id, avatar_id, name,
+                id, page_id, parent_id, avatar, name,
                 html_body, body, reviewed, moderator, op,
                 created_at as "created_at: DateTime<Utc>",
                 updated_at as "updated_at: DateTime<Utc>",
@@ -88,7 +88,7 @@ pub async fn root_comments(
 ) -> Result<(i64, Vec<Comment>)> {
     let mut select = String::from(r#"
         SELECT
-        id, page_id, parent_id, avatar_id, name,
+        id, page_id, parent_id, avatar, name,
         html_body, body, reviewed, moderator, op,
         created_at, updated_at, token
     "#);
@@ -178,7 +178,7 @@ pub async fn replies(
     let query = format!(
         r#"
             SELECT
-                id, page_id, parent_id, avatar_id, name,
+                id, page_id, parent_id, avatar, name,
                 html_body, body, reviewed, moderator, op,
                 created_at, updated_at, token
             FROM comments
@@ -203,7 +203,7 @@ pub async fn create(
     db: &SqlitePool,
     page_id: i64,
     parent_id: Option<i64>,
-    avatar_id: Option<i64>,
+    avatar: &Option<&String>,
     name: &str,
     html_body: &str,
     body: &str,
@@ -217,14 +217,14 @@ pub async fn create(
     let comment = query_as::<_, Comment>(
             r#"
                 INSERT INTO comments
-                (page_id, parent_id, avatar_id, name, html_body, body, reviewed, op, moderator, token)
+                (page_id, parent_id, avatar, name, html_body, body, reviewed, op, moderator, token)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 RETURNING *
             "#
         )
         .bind(page_id)
         .bind(parent_id)
-        .bind(avatar_id)
+        .bind(avatar)
         .bind(name)
         .bind(html_body)
         .bind(body)

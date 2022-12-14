@@ -21,7 +21,7 @@ pub type Context = Extension<Arc<AppContext>>;
 
 pub use error::Error;
 
-use crate::db::{self, sites::Site, moderators::{Moderator, self}, pages::Page, avatars::{self, Avatar}};
+use crate::db::{self, sites::Site, moderators::{Moderator, self}, pages::Page};
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -48,36 +48,26 @@ struct User {
     name: String,
     moderator: bool,
     op: bool,
-    avatar: Option<Avatar>,
+    avatar: Option<String>,
 }
 
 impl User {
-    async fn from_moderator(db: &SqlitePool, moderator: Moderator) -> Result<Self> {
-        Ok(
-            Self {
-                name: moderator.name,
-                moderator: true,
-                op: moderator.op,
-                avatar: match moderator.avatar_id {
-                    None => None,
-                    Some(id) => avatars::find(db, id).await?,
-                }
-            }
-        )
+    fn from_moderator(moderator: Moderator) -> Self {
+        Self {
+            name: moderator.name,
+            moderator: true,
+            op: moderator.op,
+            avatar: moderator.avatar,
+        }
     }
 
-    async fn from_signed_user(db: &SqlitePool, user: SignedUser) -> Result<Self> {
-        Ok(
-            Self {
-                name: user.name.unwrap_or(String::from("Anonymous")),
-                moderator: user.moderator.unwrap_or(false),
-                op: user.op.unwrap_or(false),
-                avatar: match user.avatar {
-                    None => None,
-                    Some(data) => Some(avatars::find_or_create(db, &data).await?),
-                }
-            }
-        )
+    fn from_signed_user(user: SignedUser) -> Self {
+        Self {
+            name: user.name.unwrap_or(String::from("Anonymous")),
+            moderator: user.moderator.unwrap_or(false),
+            op: user.op.unwrap_or(false),
+            avatar: user.avatar,
+        }
     }
 }
 
@@ -135,7 +125,7 @@ impl<T> ApiRequest<T> {
         if let Some(ref sid) = self.sid {
             match moderators::find_by_sid(db, sid).await {
                 Err(_) => return Err(Error::Unauthorized),
-                Ok(moderator) => return Ok((site, Some(User::from_moderator(db, moderator).await?))),
+                Ok(moderator) => return Ok((site, Some(User::from_moderator(moderator)))),
             }
         }
 
@@ -151,7 +141,7 @@ impl<T> ApiRequest<T> {
                     if !site.anonymous && signed_user.name.is_none() {
                         return Err(Error::BadRequest("User name is required for non-anonymous sites"))
                     }
-                    Some(User::from_signed_user(db, signed_user).await?)
+                    Some(User::from_signed_user(signed_user))
                 }
             }
         };

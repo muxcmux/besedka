@@ -12,17 +12,11 @@ BEGIN
   WHERE rowid = new.rowid;
 END;
 
-CREATE TABLE avatars (
-  id            INTEGER NOT NULL PRIMARY KEY,
-  sha           BLOB NOT NULL UNIQUE,
-  data          TEXT NOT NULL
-);
-
 CREATE TABLE moderators (
   name           VARCHAR NOT NULL UNIQUE,
   password       VARCHAR NOT NULL,
   op             BOOLEAN NOT NULL DEFAULT 0,
-  avatar_id      INTEGER REFERENCES avatars(id),
+  avatar         TEXT,
   sid            BLOB UNIQUE
 );
 
@@ -44,10 +38,10 @@ CREATE TABLE comments (
   id            INTEGER NOT NULL PRIMARY KEY,
   page_id       INTEGER NOT NULL REFERENCES pages(id) ON UPDATE CASCADE ON DELETE CASCADE,
   parent_id     INTEGER REFERENCES comments(id) ON UPDATE CASCADE ON DELETE CASCADE,
-  avatar_id     INTEGER REFERENCES avatars(id) ON UPDATE CASCADE ON DELETE CASCADE,
   name          VARCHAR NOT NULL DEFAULT Anonymous,
-  body          VARCHAR NOT NULL,
-  html_body     VARCHAR NOT NULL,
+  body          TEXT NOT NULL,
+  html_body     TEXT NOT NULL,
+  avatar        TEXT,
   reviewed      BOOLEAN NOT NULL DEFAULT 0,
   moderator     BOOLEAN NOT NULL DEFAULT 0,
   op            BOOLEAN NOT NULL DEFAULT 0,
@@ -58,5 +52,4 @@ CREATE TABLE comments (
 
 CREATE INDEX idx_comments_page_id   ON comments(page_id);
 CREATE INDEX idx_comments_parent_id ON comments(parent_id);
-CREATE INDEX idx_comments_avatar_id ON comments(avatar_id);
 CREATE INDEX idx_comments_token     ON comments(token);

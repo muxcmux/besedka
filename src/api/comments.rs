@@ -3,7 +3,7 @@ use crate::{
     db::{
         comments::{Comment, self},
         pages::{Page, self},
-        sites::Site, avatars::{self, Avatar},
+        sites::Site,
     },
 };
 use axum::{extract::Path, routing::post, Json, Router};
@@ -32,7 +32,7 @@ struct CommentWithReplies {
     name: String,
     html_body: String,
     body: String,
-    avatar_id: Option<i64>,
+    avatar: Option<String>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     reviewed: bool,
@@ -50,7 +50,7 @@ struct OwnedComment {
     name: String,
     html_body: String,
     body: String,
-    avatar_id: Option<i64>,
+    avatar: Option<String>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     reviewed: bool,
@@ -65,7 +65,6 @@ struct CommentsPage {
     total: i64,
     cursor: Option<String>,
     comments: Vec<CommentWithReplies>,
-    avatars: Vec<Avatar>,
 }
 
 #[derive(Deserialize)]
@@ -80,7 +79,6 @@ const COMMENTS_PER_PAGE: i64 = 42;
 fn comments_page(
     parents: Vec<Comment>,
     all_replies: Vec<Comment>,
-    avatars: Vec<Avatar>,
     total: i64,
     token: &Option<Base64>,
 ) -> CommentsPage {
@@ -109,10 +107,10 @@ fn comments_page(
             replies.push(OwnedComment {
                 id: r.id,
                 parent_id: r.parent_id,
-                avatar_id: r.avatar_id,
                 name: r.name,
                 html_body: r.html_body,
                 body: r.body,
+                avatar: r.avatar,
                 created_at: r.created_at,
                 updated_at: r.updated_at,
                 reviewed: r.reviewed,
@@ -130,10 +128,10 @@ fn comments_page(
 
         comments.push(CommentWithReplies {
             id: parent.id,
-            avatar_id: parent.avatar_id,
             name: parent.name,
             html_body: parent.html_body,
             body: parent.body,
+            avatar: parent.avatar,
             created_at: parent.created_at,
             updated_at: parent.updated_at,
             reviewed: parent.reviewed,
@@ -161,7 +159,6 @@ fn comments_page(
 
     CommentsPage {
         comments,
-        avatars,
         cursor,
         total,
     }
@@ -205,25 +202,9 @@ async fn index(
         &parents
     ).await?;
 
-    let mut all_comment_ids = parents.iter()
-        .flat_map(|p| p.avatar_id)
-        .collect::<Vec<i64>>();
-
-    let replies_ids = replies.iter()
-        .flat_map(|r| r.avatar_id)
-        .collect::<Vec<i64>>();
-
-    all_comment_ids.extend(replies_ids);
-
-    let avatars = avatars::find_all_by_id(
-        &ctx.db,
-        all_comment_ids,
-    ).await?;
-
     Ok(Json(comments_page(
         parents,
         replies,
-        avatars,
         total,
         req.payload.as_ref().map_or(&None, |p| &p.token),
     )))
@@ -233,7 +214,6 @@ async fn index(
 struct PostCommentResponse {
     token: Base64,
     comment: OwnedComment,
-    avatar: Option<Avatar>
 }
 /// POST /api/comment
 async fn create(
@@ -291,8 +271,11 @@ async fn post_comment(
             // Use the api user name (could be anonymous)
             // or set the name to Anonymous
             let anon = String::from("Anonymous");
-            let mut name = user.as_ref()
-                .map_or(data.name.as_ref().unwrap_or(&anon), |c| &c.name);
+            let (mut name, avatar) = user
+                .as_ref()
+                .map_or((data.name.as_ref().unwrap_or(&anon), None), |c| {
+                    (&c.name, c.avatar.as_ref())
+                });
             if name.trim() == "" { name = &anon }
 
             // Auto review if the user is a moderator or an op or moderation is disabled
@@ -304,7 +287,7 @@ async fn post_comment(
                 db,
                 page.id,
                 parent_id,
-                user.as_ref().and_then(|u| u.avatar.as_ref().and_then(|a| Some(a.id))),
+                &avatar,
                 &name,
                 &get_markdown(&data.body)?,
                 &data.body,
@@ -322,14 +305,13 @@ async fn post_comment(
             Ok(Json({
                 PostCommentResponse {
                     token: comment.token,
-                    avatar: user.and_then(|u| u.avatar),
                     comment: OwnedComment {
                         id: comment.id,
                         parent_id: comment.parent_id,
-                        avatar_id: comment.avatar_id,
                         html_body: comment.html_body,
                         name: comment.name,
                         body: comment.body,
+                        avatar: comment.avatar,
                         created_at: comment.created_at,
                         updated_at: comment.updated_at,
                         reviewed: comment.reviewed,

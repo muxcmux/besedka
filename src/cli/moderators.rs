@@ -53,7 +53,7 @@ avatar: {}
         moderator.name,
         "-".repeat(moderator.name.len()),
         moderator.op,
-        match moderator.avatar_id { Some(_) => "Yes", None => "No" }
+        match moderator.avatar { Some(a) => a, None => String::from("false") }
     )
 }
 

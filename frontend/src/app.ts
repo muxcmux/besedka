@@ -45,9 +45,9 @@ export default class App {
     if (this.config?.locked) {
       message('Leaving comments on this page has been disabled', 'info')
     } else {
-      new NewCommentForm(document.getElementById('besedka-new-comment') as HTMLFormElement, ({ token, comment }) => {
+      new NewCommentForm<PostCommentResponse>(document.getElementById('besedka-new-comment') as HTMLFormElement, ({ token, comment, avatar }) => {
         setToken(token)
-        this.comments.prepend(new Comment(comment).element)
+        this.comments.prepend(new Comment(comment, avatar).element)
       })
     }
   }
@@ -78,7 +78,7 @@ export default class App {
       if (status == 404 || (json && json.total == 0)) {
         message("There are no comments yet. Be the first one to post!", "info")
       } else if (json) {
-        this.renderComments(json.comments)
+        this.renderComments(json)
         this.cursor = json.cursor
 
         if (!this.observed) {
@@ -96,7 +96,9 @@ export default class App {
     this.config = json
   }
 
-  renderComments(comments: CommentRecord[]) {
-    comments.forEach(c => this.comments.append(new Comment(c).element))
+  renderComments({ comments, avatars }: { comments: CommentRecord[], avatars: Avatar[] }) {
+    comments.forEach(c => {
+      this.comments.append(new Comment(c, avatars.find((a) => a.id == c.avatar_id)).element)
+    })
   }
 }

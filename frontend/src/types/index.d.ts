@@ -7,18 +7,13 @@ declare global {
     __besedka: App
   }
 
-  interface Avatar {
-    id: number
-    data: string
-  }
-
   interface CommentRecord {
     id: number
     parent_id?: number
     name: string
     html_body: string
     body: string
-    avatar_id?: number
+    avatar?: string
     locked: boolean
     reviewed: boolean
     created_at: Date
@@ -34,7 +29,6 @@ declare global {
     total: number
     cursor: string | null
     comments: CommentRecord[]
-    avatars: Avatar[]
   }
 
   interface ApiRequest {
@@ -60,7 +54,6 @@ declare global {
   }
 
   interface PostCommentResponse {
-    avatar?: Avatar
     comment: CommentRecord
     token: string
   }

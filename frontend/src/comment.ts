@@ -6,18 +6,21 @@ const TIME_TO_EDIT = 3 * 60
 
 export default class Comment {
   comment: CommentRecord
+  avatarRecord?: Avatar
   replyForm?: NewCommentForm<PostCommentResponse>
   replyButton?: HTMLButtonElement
 
   replies = createElement('ol', 'replies')
   element = createElement('li', 'comment')
+  avatar  = createElement('div', 'avatar')
   author  = createElement('div', 'comment-author')
   date    = createElement('div', 'comment-timestamp')
   body    = createElement('div', 'comment-body')
 
-  constructor(comment: CommentRecord) {
+  constructor(comment: CommentRecord, avatarRecord?: Avatar) {
+    this.avatarRecord = avatarRecord
     this.comment = comment
-    this.buildComment(this.comment)
+    this.buildComment()
 
     if (window.__besedka.user.moderator && !this.comment.reviewed) {
       this.element.append(this.createApproveButton())
@@ -58,7 +61,9 @@ export default class Comment {
     return !this.comment.parent_id && !this.comment.locked && !window.__besedka.config?.locked
   }
 
-  buildComment({ created_at, html_body, name, reviewed, locked, owned, edited, op, moderator }: CommentRecord) {
+  buildComment() {
+    const { created_at, html_body, name, reviewed, locked, owned, edited, op, moderator } = this.comment
+
     if (!reviewed) this.element.classList.add('besedka-unreviewed-comment')
     if (locked) this.element.classList.add('besedka-locked-comment')
     if (owned) this.element.classList.add('besedka-owned-comment')
@@ -70,7 +75,10 @@ export default class Comment {
     this.date.textContent = created_at.toLocaleString(navigator.language, { dateStyle: "medium", timeStyle: "short" })
     this.body.innerHTML = html_body
 
-    this.element.append(this.author, this.date, this.body)
+    if (this.avatarRecord) {
+      this.avatar.append(createElement<HTMLImageElement>('img', '', { src: this.avatarRecord.data }))
+    }
+    this.element.append(this.avatar, this.author, this.date, this.body)
   }
 
   createReplyButton(): HTMLButtonElement {
@@ -146,8 +154,8 @@ export default class Comment {
 
     const reply = createElement<HTMLFormElement>('form', 'new-reply')
 
-    this.replyForm = new NewCommentForm(reply, ({ comment }) => {
-      this.replies.append(new Comment(comment).element)
+    this.replyForm = new NewCommentForm<PostCommentResponse>(reply, ({ comment, avatar }) => {
+      this.replies.append(new Comment(comment, avatar).element)
       this.closeReplyForm()
     }, this.comment.id)
 
