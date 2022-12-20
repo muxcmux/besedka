@@ -1,0 +1,41 @@
+#besedka-moderator-controls {
+  display: flex;
+  gap: .5rem;
+  justify-content: flex-end;
+}
+
+.besedka-lock-page,
+.besedka-unlock-page,
+.besedka-login,
+.besedka-logout {
+  background: var(--icon-color);
+  color: transparent;
+  padding: 0;
+  margin: 0;
+  height: 24px;
+  width: 24px;
+  overflow: hidden;
+  mask-size: 24px;
+  mask-position: center center;
+
+  &:hover {
+    background: var(--icon-color-hover);
+  }
+}
+
+.besedka-lock-page {
+  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M8 10H6C4.89543 10 4 10.8954 4 12V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V12C20 10.8954 19.1046 10 18 10H16H8ZM8 10V7C8 5.66667 8.8 3 12 3C13.9039 3 14.9583 3.94401 15.5 4.98952M12 14V17" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>');
+}
+
+.besedka-unlock-page {
+  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M8 10H6C4.89543 10 4 10.8954 4 12V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V12C20 10.8954 19.1046 10 18 10H16M8 10V7C8 4.79086 9.79086 3 12 3V3C14.2091 3 16 4.79086 16 7V10M8 10H16M12 14V17" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>');
+}
+
+.besedka-logout {
+  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M16 4H19C20.1046 4 21 4.89543 21 6V7M16 20H19C20.1046 20 21 19.1046 21 18V17M4.4253 19.4276L10.4253 21.2276C11.7085 21.6126 13 20.6517 13 19.3119V4.68806C13 3.34834 11.7085 2.38744 10.4253 2.77241L4.4253 4.57241C3.57934 4.8262 3 5.60484 3 6.48806V17.5119C3 18.3952 3.57934 19.1738 4.4253 19.4276Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/><path d="M9.001 12H9" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/><path d="M16 12H21M21 12L19 10M21 12L19 14" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>');
+}
+
+.besedka-login {
+  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M16 4H19C20.1046 4 21 4.89543 21 6V7M16 20H19C20.1046 20 21 19.1046 21 18V17M4.4253 19.4276L10.4253 21.2276C11.7085 21.6126 13 20.6517 13 19.3119V4.68806C13 3.34834 11.7085 2.38744 10.4253 2.77241L4.4253 4.57241C3.57934 4.8262 3 5.60484 3 6.48806V17.5119C3 18.3952 3.57934 19.1738 4.4253 19.4276Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/><path d="M9.001 12H9" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/><path d="M21 12H16M16 12L18 10M16 12L18 14" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/></svg>');
+  transform: scale(-1,1);
+}

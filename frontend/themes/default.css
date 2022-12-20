@@ -1,0 +1,55 @@
+@import "default/settings";
+@import "default/moderator_controls";
+@import "default/modal";
+@import "default/message";
+@import "default/avatar";
+@import "default/new_comment";
+@import "default/edit_comment";
+@import "default/preview";
+@import "default/comments";
+@import "default/replies";
+@import "default/controls";
+@import "default/md.css";
+@import "default/credits";
+
+.besedka-locked {
+  #besedka-new-comment { display: none }
+  #besedka-message { font-weight: 500; margin: 2rem; }
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  #besedka-new-comment.besedka-focused {
+    --input-bg: #141924;
+    --input-separator:
+      inset 0 .75rem 0 .75rem var(--input-bg),
+      inset 0 0 0 1px var(--separator-color);
+  }
+}
+
+.besedka-anonymous-user {
+  .besedka-comment-textarea { border-radius: 0 0 .3rem .3rem }
+  .besedka-avatar { align-self: center }
+}
+
+.besedka-focused {
+  .besedka-comment-author-input {
+    box-shadow: var(--input-separator), 0 0 0 2px var(--input-highlight);
+  }
+
+  .besedka-comment-textarea {
+    box-shadow: 0 0px 0 2px var(--input-highlight);
+  }
+
+  &.besedka-anonymous-user {
+    .besedka-comment-textarea {
+      box-shadow: 0 2px 0 0 var(--input-highlight), -2px 1px 0 0px var(--input-highlight), 2px 1px 0 0px var(--input-highlight);
+    }
+  }
+}
+
+.besedka-editing-comment {
+  > .besedka-delete-comment { margin-left: auto }
+  > .besedka-edit-comment,
+  > .besedka-comment-body { display: none }
+  > .besedka-comment-preview { display: none }
+}

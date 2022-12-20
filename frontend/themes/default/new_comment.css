@@ -1,0 +1,71 @@
+#besedka-new-comment {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--gap);
+  margin: var(--gap) 0 calc(3 * var(--gap));
+}
+
+.besedka-comment-author-input,
+.besedka-comment-textarea {
+  background: var(--input-bg);
+  border-radius: .25rem;
+  padding: .5rem .75rem;
+  border: 0;
+  font-size: max(1rem, 16px);
+  color: var(--input-fg);
+
+  &:focus { outline: 0 }
+  &::placeholder { color: var(--input-placeholder) }
+}
+
+.besedka-comment-author-input {
+  margin-left: auto;
+  width: var(--rhs);
+  border-radius: .3rem .3rem 0 0;
+  box-shadow:
+    var(--input-separator),
+    0 3px 3px 0 var(--input-shadow-color);
+}
+
+.besedka-comment-textarea {
+  margin: 0 0 1rem auto;
+  width: var(--rhs);
+  height: 140px;
+  min-height: 45px;
+  border-radius: .3rem;
+  box-shadow: 0 2px 2px 0 var(--input-shadow-color);
+  resize: vertical;
+}
+
+.besedka-comment-error {
+  --input-highlight: var(--red);
+}
+
+.besedka-post-comment-button,
+.besedka-preview-button,
+.besedka-write-button {
+  padding: .5em;
+  border-radius: .35rem;
+  white-space: nowrap;
+}
+
+.besedka-write-button,
+.besedka-preview-button {
+  background: transparent;
+  color: var(--fg);
+
+  &:hover {
+    background: var(--button-hover);
+  }
+}
+
+.besedka-post-comment-button {
+  margin-left: calc(var(--lhs) + var(--gap));
+  overflow: hidden;
+  color: white;
+  background: var(--blue) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M22 11.9844C22 12.5853 21.6984 13.1862 21.0953 13.4867C19.0849 14.6886 15.2652 16.7919 12.4506 18.1941C10.0381 19.3959 6.72099 20.7981 4.40903 21.7997C4.20799 21.8998 3.90643 22 3.70539 22C3.30331 22 2.80072 21.7997 2.49916 21.4992C1.99656 20.9984 1.89604 20.2973 2.09708 19.5962L4.20799 13.3865C4.30851 12.9859 4.71059 12.7856 5.11267 12.7856H10.1387C10.5407 12.7856 10.9428 12.4851 10.9428 11.9844C10.9428 11.4836 10.6413 11.1831 10.1387 11.1831H5.11267C4.71059 11.1831 4.30851 10.8826 4.20799 10.482L2.09708 4.2723C1.89604 3.67136 1.99656 2.97027 2.59968 2.46948C3.10227 1.9687 3.80591 1.86854 4.40903 2.16901C6.31891 2.97027 9.93762 4.57277 12.4506 5.77465C15.2652 7.17684 19.0849 9.38028 21.0953 10.482C21.6984 10.7825 22 11.3834 22 11.9844Z" fill="white"/></svg>') 50% 50% no-repeat;
+  color: transparent;
+
+  &:hover { opacity: .8 }
+}

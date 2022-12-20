@@ -1,0 +1,26 @@
+.besedka-edit-comment-form {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+
+  .besedka-comment-textarea {
+    width: 100%;
+    order: 0;
+  }
+
+  .besedka-post-comment-button {
+    order: 3;
+    margin-left: 0;
+  }
+}
+
+.besedka-cancel-editing {
+  position: absolute;
+  top: -3.5rem;
+  right: 0;
+  background: transparent;
+  color: var(--fg);
+
+  &:hover { text-decoration: underline }
+}

@@ -1,0 +1,25 @@
+.besedka-comment-preview {
+  display: none;
+  margin-bottom: var(--gap);
+}
+.besedka-write-button { display: none }
+
+.besedka-previewing {
+  .besedka-comment-preview {
+    display: initial;
+    width: var(--rhs);
+    margin-left: 0;
+  }
+  &.besedka-anonymous-user .besedka-comment-preview {
+    width: 100%;
+    margin-left: calc(var(--gap) + var(--lhs));
+    margin-top: var(--gap);
+  }
+  .besedka-comment-textarea { display: none }
+  .besedka-write-button { display: initial }
+  .besedka-preview-button { display: none }
+  .besedka-comment-author-input {
+    border-radius: .3rem;
+    box-shadow: none;
+  }
+}

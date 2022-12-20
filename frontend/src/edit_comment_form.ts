@@ -15,6 +15,7 @@ export default class EditCommentForm<R> extends NewCommentForm<R> {
     super(element, callback)
     this.onCancel = onCancel
     this.setComment(comment)
+    window.requestAnimationFrame(() => this.body.focus())
   }
 
   storageKey(): string {
@@ -31,7 +32,7 @@ export default class EditCommentForm<R> extends NewCommentForm<R> {
       this.destroy()
       this.onCancel()
     })
-    this.element.append(this.body, this.button, this.cancel, this.message)
+    this.element.append(this.body, this.button, this.cancel)
   }
 
   setComment(comment: CommentRecord) {

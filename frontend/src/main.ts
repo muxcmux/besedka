@@ -1,3 +1,4 @@
+import '../themes/default.css'
 import App from './app'
 import { safeParse } from './utils'
 

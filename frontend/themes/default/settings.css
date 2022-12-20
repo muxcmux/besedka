@@ -1,0 +1,55 @@
+#besedka {
+  line-height: 1.5;
+  --red: #f27983;
+  --blue: #399ee6;
+  --green: #a6cc70;
+  --bg: white;
+  --fg: #575f66;
+  --icon-color: rgba(0,0,0,.2);
+  --icon-color-hover: rgba(0,0,0,.4);
+  --input-bg: white;
+  --input-fg: #575f66;
+  --input-placeholder: rgba(0,0,0,.2);
+  --input-highlight: var(--blue);
+  --input-shadow-color: rgba(0,0,0,.08);
+  --separator-color: rgba(0,0,0,.1);
+  --input-separator:
+    inset 0 .75rem 0 .75rem var(--input-bg),
+    inset 0 0 0 1px var(--separator-color);
+  --avatar-color: linear-gradient(45deg, #d8d8d8, #e8e8e8);
+  --button-hover: rgba(0,0,0,.04);
+  --gap: 1rem;
+  --lhs: 2rem;
+  --rhs: calc(100% - 1rem - var(--lhs));
+
+  * { box-sizing: border-box }
+
+  input, textarea {
+    line-height: 1.5;
+    font-size: 1em;
+  }
+
+  button {
+    cursor: pointer;
+    appearance: none;
+    border: none;
+  }
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  #besedka {
+    --blue: #3f688f;
+    --green: #99bf42;
+    --bg: black;
+    --fg: #cbccc6;
+    --icon-color: rgba(255,255,255,.2);
+    --icon-color-hover: rgba(255,255,255,.4);
+    --input-bg: #101521;
+    --input-fg: #cbccc6;
+    --input-placeholder: rgba(255,255,255,.23);
+    --input-shadow-color: transparent;
+    --separator-color: rgba(255,255,255,.1);
+    --avatar-color: linear-gradient(45deg, #323A4C, #33415E);
+    --button-hover: rgba(255,255,255,.05);
+  }
+}

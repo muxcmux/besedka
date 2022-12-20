@@ -1,4 +1,4 @@
-## Besedka
+# Besedka
 
 Besedka is a free (as in beer), open source, self-hosted commenting system for your website. It is
 distributed as a single executable binary, which you can download and run on your own server.

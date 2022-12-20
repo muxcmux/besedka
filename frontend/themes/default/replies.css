@@ -1,0 +1,56 @@
+.besedka-replies {
+  opacity: .9;
+  font-size: .8em;
+  padding: 0 0 0 1rem;
+  border-left: 1px solid var(--separator-color);
+  list-style: none;
+  order: 4;
+
+  .besedka-comment {
+    border-top: none;
+    display: block;
+    position: relative;
+    padding: 1rem 0 0 1.8rem;
+
+    &:last-child { padding-bottom: 1rem }
+    &:not(:first-child) { border-top: none }
+
+    > * { display: inline }
+    > .besedka-comment-body > p,
+    > .besedka-comment-body > p > *,
+    > .besedka-comment-preview > p,
+    > .besedka-comment-preview > p > * {
+      display: inline
+    }
+
+    > .besedka-avatar {
+      display: block;
+      position: absolute;
+      margin-top: 0;
+      left: 0;
+      --lhs: 1.2rem;
+    }
+  }
+
+  .besedka-comment-author {
+    font-size: .9em;
+
+    &::before { content: '— ' }
+  }
+
+  .besedka-comment-author,
+  .besedka-comment-timestamp { margin-left: .2rem }
+
+  .besedka-comment-timestamp { position: relative; top: 0; left: 0; font-size: .9em }
+
+  .besedka-comment-body { margin-left: 0 }
+
+  &:empty { display: none }
+
+  .besedka-edit-comment,
+  .besedka-delete-comment {
+    width: 1rem;
+    height: 1rem;
+    margin: 0 0 0 .2rem;
+  }
+}

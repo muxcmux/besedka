@@ -14,7 +14,6 @@ declare global {
     html_body: string
     body: string
     avatar?: string
-    locked: boolean
     reviewed: boolean
     created_at: Date
     updated_at: Date

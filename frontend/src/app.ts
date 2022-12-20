@@ -11,11 +11,13 @@ export default class App {
   // @ts-ignore strictPropertyInitialization
   comments: HTMLOListElement
   // @ts-ignore strictPropertyInitialization
+  heading: HTMLHeadingElement
+  // @ts-ignore strictPropertyInitialization
   endOfComments: HTMLDivElement
   observer = new IntersectionObserver((entries) => {
     if (entries && entries[0].isIntersecting && !this.loading && this.cursor) this.loadComments()
   })
-
+  commentCount = 0
   // @ts-ignore strictPropertyInitialization
   observed: boolean
   // @ts-ignore strictPropertyInitialization
@@ -43,11 +45,14 @@ export default class App {
     if (this.config) await this.loadComments()
 
     if (this.config?.locked) {
+      this.element.classList.add('besedka-locked')
       message('Leaving comments on this page has been disabled', 'info')
     } else {
-      new NewCommentForm<PostCommentResponse>(document.getElementById('besedka-new-comment') as HTMLFormElement, ({ token, comment, avatar }) => {
+      this.element.classList.remove('besedka-locked')
+      new NewCommentForm<PostCommentResponse>(document.getElementById('besedka-new-comment') as HTMLFormElement, ({ token, comment }) => {
         setToken(token)
-        this.comments.prepend(new Comment(comment, avatar).element)
+        if (comment.reviewed) this.updateCount(this.commentCount + 1)
+        this.comments.prepend(new Comment(comment).element)
       })
     }
   }
@@ -57,15 +62,28 @@ export default class App {
       <div id="besedka-moderator-controls"></div>
       <form id="besedka-new-comment"></form>
       <div id="besedka-message"></div>
+      <h3 id="besedka-heading"></h3>
       <ol id="besedka-comments"></ol>
       <div id="besedka-end-of-comments"></div>
+      <div id="besedka-credits">Comments by <a href="https://github.com/muxcmux/besedka" target="_blank">Besedka</a></div>
     `
     this.comments = document.getElementById('besedka-comments') as HTMLOListElement
     this.endOfComments = document.getElementById('besedka-end-of-comments') as HTMLDivElement
+    this.heading = document.getElementById('besedka-heading') as HTMLHeadingElement
   }
 
   commentUrl(): string {
     return this.cursor ? `/api/comments?cursor=${this.cursor}` : '/api/comments'
+  }
+
+  updateCount(count: number) {
+    this.commentCount = count
+    if (count > 0) {
+      this.heading.textContent = `${count} Comment${ count == 1 ? '' : 's' }`
+    } else {
+      message("There are no comments yet. Be the first one to post!", "info")
+      this.heading.textContent = ''
+    }
   }
 
   async loadComments() {
@@ -78,6 +96,7 @@ export default class App {
       if (status == 404 || (json && json.total == 0)) {
         message("There are no comments yet. Be the first one to post!", "info")
       } else if (json) {
+        this.updateCount(json.total)
         this.renderComments(json)
         this.cursor = json.cursor
 
@@ -96,9 +115,9 @@ export default class App {
     this.config = json
   }
 
-  renderComments({ comments, avatars }: { comments: CommentRecord[], avatars: Avatar[] }) {
+  renderComments({ comments }: { comments: CommentRecord[] }) {
     comments.forEach(c => {
-      this.comments.append(new Comment(c, avatars.find((a) => a.id == c.avatar_id)).element)
+      this.comments.append(new Comment(c).element)
     })
   }
 }

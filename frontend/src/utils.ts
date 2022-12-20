@@ -84,3 +84,13 @@ const DATETIME_FIELDS = ["created_at", "updated_at"]
 export function reviver(key: string, value: any): any {
   return DATETIME_FIELDS.includes(key) ? new Date(value) : value
 }
+
+export function debounce(fn: Function, delay = 500) {
+  let timeout: number
+
+  return () => {
+    if (timeout) clearTimeout(timeout)
+
+    timeout = setTimeout(() => fn(), delay)
+  }
+}

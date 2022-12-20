@@ -6,19 +6,17 @@ const TIME_TO_EDIT = 3 * 60
 
 export default class Comment {
   comment: CommentRecord
-  avatarRecord?: Avatar
   replyForm?: NewCommentForm<PostCommentResponse>
   replyButton?: HTMLButtonElement
 
   replies = createElement('ol', 'replies')
   element = createElement('li', 'comment')
-  avatar  = createElement('div', 'avatar')
+  avatar  = createElement('div', 'avatar no-avatar')
   author  = createElement('div', 'comment-author')
   date    = createElement('div', 'comment-timestamp')
   body    = createElement('div', 'comment-body')
 
-  constructor(comment: CommentRecord, avatarRecord?: Avatar) {
-    this.avatarRecord = avatarRecord
+  constructor(comment: CommentRecord) {
     this.comment = comment
     this.buildComment()
 
@@ -58,14 +56,13 @@ export default class Comment {
   }
 
   canReply() {
-    return !this.comment.parent_id && !this.comment.locked && !window.__besedka.config?.locked
+    return !this.comment.parent_id && !window.__besedka.config?.locked
   }
 
   buildComment() {
-    const { created_at, html_body, name, reviewed, locked, owned, edited, op, moderator } = this.comment
+    const { created_at, html_body, name, reviewed, owned, edited, op, moderator } = this.comment
 
     if (!reviewed) this.element.classList.add('besedka-unreviewed-comment')
-    if (locked) this.element.classList.add('besedka-locked-comment')
     if (owned) this.element.classList.add('besedka-owned-comment')
     if (edited) this.element.classList.add('besedka-edited-comment')
     if (moderator) this.element.classList.add('besedka-moderator-comment')
@@ -75,20 +72,21 @@ export default class Comment {
     this.date.textContent = created_at.toLocaleString(navigator.language, { dateStyle: "medium", timeStyle: "short" })
     this.body.innerHTML = html_body
 
-    if (this.avatarRecord) {
-      this.avatar.append(createElement<HTMLImageElement>('img', '', { src: this.avatarRecord.data }))
+    if (this.comment.avatar) {
+      this.avatar.classList.remove('besedka-no-avatar')
+      this.avatar.append(createElement<HTMLImageElement>('img', '', { src: this.comment.avatar, loading: 'lazy' }))
     }
-    this.element.append(this.avatar, this.author, this.date, this.body)
+    this.element.append(this.avatar, this.body, this.author, this.date)
   }
 
   createReplyButton(): HTMLButtonElement {
-    this.replyButton = createButton('Reply', 'add-reply')
-    this.replyButton.addEventListener('click', e => this.openReplyForm(e))
+    this.replyButton = createButton('Reply', 'add-reply', { title: 'Reply' })
+    this.replyButton.addEventListener('click', () => this.openReplyForm())
     return this.replyButton
   }
 
   createApproveButton(): HTMLButtonElement {
-    const button = createButton('Approve', 'approve-comment')
+    const button = createButton('Approve', 'approve-comment', { title: 'Approve' })
     button.addEventListener('click', async () => {
       const { status } = await request(`/api/comment/${this.comment.id}`, window.__besedka.req, 'PATCH')
       if (status == 200) {
@@ -104,13 +102,13 @@ export default class Comment {
   }
 
   createDeleteButton(): HTMLButtonElement {
-    const button = createButton('Delete', 'delete-comment')
+    const button = createButton('Delete', 'delete-comment', { title: 'Delete' })
     button.addEventListener('click', async () => {
       if (confirm("There's no undo. Proceed?")) {
         const { status } = await request(this.url(), Object.assign({
           payload: getToken()
         }, window.__besedka.req), 'DELETE')
-        if (status == 200) this.element.remove()
+        if (status == 200) this.destroy()
       }
     })
 
@@ -119,22 +117,19 @@ export default class Comment {
   }
 
   createEditControls(): HTMLButtonElement {
-    const button = createButton('Edit', 'edit-comment')
+    const button = createButton('Edit', 'edit-comment', { title: 'Edit' })
     button.addEventListener('click', () => {
-      button.hidden = true
-      this.body.hidden = true
-      const form = createElement<HTMLFormElement>('form', 'edit-comment')
+      this.element.classList.add('besedka-editing-comment')
+      const form = createElement<HTMLFormElement>('form', 'edit-comment-form')
       const editForm = new EditCommentForm<UpdateCommentResponse>(form, this.comment, ({ body, html_body }) => {
         this.comment.html_body = html_body
         this.comment.body = body
         this.body.innerHTML = html_body
-        this.body.hidden = false
         this.body.classList.add('besedka-edited-comment')
+        this.element.classList.remove('besedka-editing-comment')
         editForm.destroy()
-        button.hidden = false
       }, () => {
-        this.body.hidden = false
-        button.hidden = false
+        this.element.classList.remove('besedka-editing-comment')
       })
       this.element.insertBefore(form, this.body)
     })
@@ -149,17 +144,15 @@ export default class Comment {
     }, (TIME_TO_EDIT - this.secondsSinceCreated()) * 1000)
   }
 
-  openReplyForm(e: MouseEvent) {
-    (e.target as HTMLButtonElement).hidden = true
-
+  openReplyForm() {
     const reply = createElement<HTMLFormElement>('form', 'new-reply')
 
-    this.replyForm = new NewCommentForm<PostCommentResponse>(reply, ({ comment, avatar }) => {
-      this.replies.append(new Comment(comment, avatar).element)
+    this.replyForm = new NewCommentForm<PostCommentResponse>(reply, ({ comment }) => {
+      this.replies.append(new Comment(comment).element)
       this.closeReplyForm()
     }, this.comment.id)
 
-    const cancel = createButton('Cancel', 'cancel-reply')
+    const cancel = createButton('Cancel', 'cancel-reply', { title: 'Cancel' })
     cancel.addEventListener('click', () => this.closeReplyForm())
     reply.append(cancel)
 
@@ -167,7 +160,11 @@ export default class Comment {
   }
 
   closeReplyForm() {
-    if (this.replyButton) this.replyButton.hidden = false
     this.replyForm?.destroy()
+  }
+
+  destroy() {
+    if (this.comment.reviewed) window.__besedka.updateCount(window.__besedka.commentCount - 1)
+    this.element.remove()
   }
 }

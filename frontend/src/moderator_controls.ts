@@ -39,7 +39,7 @@ export default class ModeratorControls {
   }
 
   buildModal(): { msg: HTMLDivElement, modal: HTMLDialogElement} {
-    const msg = createElement<HTMLDivElement>('div')
+    const msg = createElement<HTMLDivElement>('div', 'message')
     const modal = createElement<HTMLDialogElement>('dialog', 'modal')
     const close = createButton('×', 'close-modal')
     close.addEventListener('click', () => modal.close())
@@ -51,14 +51,17 @@ export default class ModeratorControls {
     const loginButton = createButton('Login', 'login', { title: 'Login' })
     const { msg, modal } = this.buildModal()
     const form = createElement<HTMLFormElement>('form')
-    const name = createElement<HTMLInputElement>('input', 'login-name', { placeholder: 'Login name' })
-    const pass = createElement<HTMLInputElement>('input', 'login-password', { placeholder: 'password', type: 'password' })
+    const name = createElement<HTMLInputElement>('input', 'login-name', { placeholder: 'User' })
+    const pass = createElement<HTMLInputElement>('input', 'login-password', { placeholder: 'Pass', type: 'password' })
     const login = createButton('Login', '', { title: 'Login' })
 
     form.append(name, pass, login)
     modal.append(form)
 
-    loginButton.addEventListener('click', () => modal.showModal())
+    loginButton.addEventListener('click', () => {
+      modal.showModal()
+      name.focus()
+    })
     form.addEventListener('submit', async (e) => {
       e.preventDefault()
       if (name.value && pass.value) {

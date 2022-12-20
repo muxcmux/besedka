@@ -1,0 +1,4 @@
+.besedka-comment-body > *,
+.besedka-comment-preview > * { margin-top: 0 }
+.besedka-comment-body > *:last-child,
+.besedka-comment-preview > *:last-child { margin-bottom: 0 }

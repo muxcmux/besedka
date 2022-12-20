@@ -1,0 +1,23 @@
+.besedka-avatar {
+  order: 0;
+  width: var(--lhs);
+  height: var(--lhs);
+  border-radius: 50%;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.besedka-no-avatar {
+  background: var(--avatar-color);
+  mask-image: url('data:image/svg+xml;utf8,<svg version="1.1" viewBox="0 0 60 60" xml:space="preserve" xmlns="http://www.w3.org/2000/svg"><path d="m30 1.5c-16.542 0-30 12.112-30 27 0 5.204 1.646 10.245 4.768 14.604-0.591 6.537-2.175 11.39-4.475 13.689-0.304 0.304-0.38 0.769-0.188 1.153 0.17 0.343 0.52 0.554 0.895 0.554 0.046 0 0.092-3e-3 0.139-0.01 0.405-0.057 9.813-1.411 16.618-5.339 3.864 1.559 7.98 2.349 12.243 2.349 16.542 0 30-12.112 30-27s-13.458-27-30-27zm-14 31c-2.206 0-4-1.794-4-4s1.794-4 4-4 4 1.794 4 4-1.794 4-4 4zm14 0c-2.206 0-4-1.794-4-4s1.794-4 4-4 4 1.794 4 4-1.794 4-4 4zm14 0c-2.206 0-4-1.794-4-4s1.794-4 4-4 4 1.794 4 4-1.794 4-4 4z"/></svg>');
+  mask-position: center center;
+  mask-repeat: no-repeat;
+  mask-size: 100%;
+  border-radius: 0;
+  transform: scale(-1,1);
+}
