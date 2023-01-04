@@ -3,7 +3,7 @@ use axum::{
     http::header,
     response::{IntoResponse, Response},
     routing::get,
-    Router,
+    Router, extract::Path,
 };
 use chrono::NaiveDateTime;
 use rust_embed::RustEmbed;
@@ -51,9 +51,15 @@ impl<T: Into<String>> IntoResponse for StaticFile<T> {
 }
 
 pub fn router() -> Router {
-    Router::new().route("/comments.js", get(comments))
+    Router::new()
+        .route("/comments.js", get(comments))
+        .route("/themes/:theme", get(theme))
 }
 
 async fn comments() -> impl IntoResponse {
     StaticFile("dist/comments.js")
+}
+
+async fn theme(Path(theme): Path<String>) -> impl IntoResponse {
+    StaticFile(format!("dist/{}", theme))
 }

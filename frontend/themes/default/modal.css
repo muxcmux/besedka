@@ -17,12 +17,15 @@
   }
 
   form button,
-  input { border-radius: .35rem }
+  input {
+    border-radius: .35rem;
+    font-size: 16px;
+  }
 
   form button {
     background: var(--blue);
     color: white;
-    padding: .5rem;
+    padding: .7em;
   }
 
   button:hover { opacity: .8 }

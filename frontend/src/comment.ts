@@ -1,10 +1,11 @@
 import EditCommentForm from "./edit_comment_form"
 import NewCommentForm from "./new_comment_form"
-import { createButton, createElement, getToken, request } from "./utils"
+import { createButton, createElement, getToken, request, timeago } from "./utils"
 
 const TIME_TO_EDIT = 3 * 60
 
 export default class Comment {
+  editing = false
   comment: CommentRecord
   replyForm?: NewCommentForm<PostCommentResponse>
   replyButton?: HTMLButtonElement
@@ -13,7 +14,7 @@ export default class Comment {
   element = createElement('li', 'comment')
   avatar  = createElement('div', 'avatar no-avatar')
   author  = createElement('div', 'comment-author')
-  date    = createElement('div', 'comment-timestamp')
+  date    = createElement<HTMLTimeElement>('time', 'comment-timestamp')
   body    = createElement('div', 'comment-body')
 
   constructor(comment: CommentRecord) {
@@ -36,7 +37,7 @@ export default class Comment {
 
   secondsSinceCreated(): number {
     const created = this.comment.created_at.getTime()
-    const now = new Date(new Date().toUTCString()).getTime()
+    const now = new Date().getTime()
     return (now - created) / 1000
   }
 
@@ -60,16 +61,20 @@ export default class Comment {
   }
 
   buildComment() {
-    const { created_at, html_body, name, reviewed, owned, edited, op, moderator } = this.comment
+    const { created_at, html_body, name, reviewed, owned, edited, op, moderator, replies } = this.comment
 
     if (!reviewed) this.element.classList.add('besedka-unreviewed-comment')
     if (owned) this.element.classList.add('besedka-owned-comment')
     if (edited) this.element.classList.add('besedka-edited-comment')
     if (moderator) this.element.classList.add('besedka-moderator-comment')
     if (op) this.element.classList.add('besedka-op-comment')
+    if (replies?.length) this.element.classList.add('besedka-has-replies')
 
     this.author.textContent = name
-    this.date.textContent = created_at.toLocaleString(navigator.language, { dateStyle: "medium", timeStyle: "short" })
+    const localTimeString = created_at.toLocaleString(navigator.language, { dateStyle: "medium", timeStyle: "short" })
+    this.date.setAttribute('datetime', localTimeString)
+    this.date.setAttribute('title', localTimeString)
+    this.date.textContent = timeago(created_at)
     this.body.innerHTML = html_body
 
     if (this.comment.avatar) {
@@ -149,22 +154,41 @@ export default class Comment {
 
     this.replyForm = new NewCommentForm<PostCommentResponse>(reply, ({ comment }) => {
       this.replies.append(new Comment(comment).element)
+      this.element.classList.add('besedka-has-replies')
       this.closeReplyForm()
+      this.element.classList.remove('besedka-replying')
     }, this.comment.id)
 
     const cancel = createButton('Cancel', 'cancel-reply', { title: 'Cancel' })
-    cancel.addEventListener('click', () => this.closeReplyForm())
+    cancel.addEventListener('click', (e) => {
+      e.preventDefault()
+      this.closeReplyForm()
+    })
     reply.append(cancel)
 
     this.element.append(reply)
+
+    this.element.classList.add('besedka-replying')
+    this.replyForm.body.focus()
   }
 
   closeReplyForm() {
+    this.element.classList.remove('besedka-replying')
     this.replyForm?.destroy()
   }
 
+  isReply() {
+    return this.element.parentElement?.classList.contains('besedka-replies')
+  }
+
   destroy() {
-    if (this.comment.reviewed) window.__besedka.updateCount(window.__besedka.commentCount - 1)
+    if (this.isReply()){
+      if (this.element.parentElement!.querySelectorAll('li').length == 1) {
+        this.element.parentElement!.parentElement!.classList.remove('besedka-has-replies');
+      }
+    } else {
+      if (this.comment.reviewed) window.__besedka.updateCount(window.__besedka.commentCount - 1)
+    }
     this.element.remove()
   }
 }

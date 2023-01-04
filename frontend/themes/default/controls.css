@@ -2,8 +2,8 @@
 .besedka-delete-comment {
   order: 2;
   color: transparent;
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1rem;
+  height: 1rem;
   background: var(--fg);
   opacity: .4;
   mask-position: center center;
@@ -15,7 +15,7 @@
 
 .besedka-edit-comment {
   margin-left: auto;
-  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1"><path d="M5,20 L19,20 C19.5522847,20 20,20.4477153 20,21 C20,21.5522847 19.5522847,22 19,22 L5,22 C4.44771525,22 4,21.5522847 4,21 C4,20.4477153 4.44771525,20 5,20 Z M4,15 C4,15 7.33323693,11.6666667 13.9997108,5 L17,8 C10.3333333,14.6666667 7,18 7,18 C6.34392558,18 5.34392558,18 4,18 C4,16.6105922 4,15.6105922 4,15 Z M15,4 L16.9997108,2 L20,5 L17.9989741,7.00102587 L15,4 Z"/></svg>');
+  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" viewBox="0 0 24 24" fill="none"><path d="M11 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V13" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 11.5L17.5 3.5C18.3284 2.67157 19.6716 2.67157 20.5 3.5C21.3284 4.32843 21.3284 5.67157 20.5 6.5L12.5 14.5L8 16L9.5 11.5Z" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>');
 }
 
 .besedka-delete-comment {

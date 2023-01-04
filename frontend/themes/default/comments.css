@@ -14,7 +14,7 @@
 
 .besedka-comment {
   position: relative;
-  padding-top: 1rem;
+  padding-top: var(--gap);
   border-top: 1px solid var(--separator-color);
   display: flex;
   flex-wrap: wrap;
@@ -47,19 +47,23 @@
   }
 }
 
-.besedka-comment-author {
+.besedka-comment-author,
+.besedka-author-preview {
   font-weight: bold;
   order: 1;
   font-size: .8em;
 }
 
-.besedka-comment-timestamp {
+.besedka-comment-timestamp,
+.besedka-timestamp-preview {
   font-size: .8em;
   opacity: .55;
   position: absolute;
   top: 2.2rem;
   left: calc(var(--gap) + var(--lhs));
 }
+
+.besedka-timestamp-preview { top: 1.2rem }
 
 .besedka-comment-body,
 .besedka-edit-comment-form { order: 3 }
@@ -69,4 +73,30 @@
 .besedka-replies {
   width: 100%;
   margin-left: calc(var(--gap) + var(--lhs));
+}
+
+.besedka-moderator-comment > .besedka-comment-author {
+  color: var(--orange);
+}
+
+.besedka-op-comment > .besedka-comment-author::after {
+  --op-color: var(--fg);
+  content: 'OP';
+  color: var(--op-color);
+  box-shadow: 0 0 0 1px inset var(--op-color);
+  opacity: .8;
+  font-family: ui-monospace,SFMono-Regular,SF Mono,Menlo,Consolas,Liberation Mono,monospace;
+  font-weight: 500;
+  margin: 0 .5rem;
+  font-size: .8em;
+  border-radius: .2rem;
+  padding: .1rem .25rem;
+}
+
+.besedka-op-comment.besedka-moderator-comment > .besedka-comment-author::after {
+  --op-color: var(--orange);
+}
+
+.besedka-replying {
+  .besedka-add-reply { display: none }
 }

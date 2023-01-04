@@ -3,11 +3,13 @@ import { createButton, createElement, debounce, getToken, request } from "./util
 export default class NewCommentForm<R> {
   element: HTMLElement
   loading = false
-  button = createButton('Post', 'post-comment-button')
-  previewButton = createButton('Preview', 'preview-button', { type: 'button' })
-  writeButton = createButton('Write', 'write-button', { type: 'button' })
+  previewing = false
+  button = createButton('Review comment', 'post-comment-button')
+  editButton = createButton('Make edits', 'make-edits-button', { type: 'button' })
   body = createElement<HTMLTextAreaElement>('textarea', 'comment-textarea', { placeholder: 'Leave a comment' })
-  preview = createElement<HTMLDivElement>('div', 'comment-preview')
+  previewBody = createElement<HTMLDivElement>('div', 'comment-preview')
+  previewAuthor = createElement<HTMLDivElement>('div', 'author-preview')
+  previewTimestamp = createElement<HTMLTimeElement>('time', 'timestamp-preview')
   avatar = createElement<HTMLDivElement>('div', 'avatar no-avatar')
   name?: HTMLInputElement
   parentId?: number
@@ -45,14 +47,18 @@ export default class NewCommentForm<R> {
       this.element.append(this.name)
     }
 
-    this.element.append(this.body, this.preview, this.button, this.previewButton, this.writeButton)
+    this.element.append(
+      this.body, this.previewBody, this.previewAuthor,
+      this.previewTimestamp, this.button, this.editButton
+    )
   }
 
   attachEvents() {
-    this.element.addEventListener('submit', (e) => this.comment(e))
-    this.previewButton.addEventListener('click', () => this.showPreview())
-    this.writeButton.addEventListener('click', () => {
+    this.element.addEventListener('submit', (e) => this.submit(e))
+    this.editButton.addEventListener('click', () => {
       this.element.classList.remove('besedka-previewing')
+      this.previewing = false
+      this.button.textContent = 'Review comment'
       this.body.focus()
     })
     this.body.addEventListener('change', debounce(() => this.save()))
@@ -85,10 +91,11 @@ export default class NewCommentForm<R> {
 
   method(): string { return 'POST' }
 
-  async comment(e: SubmitEvent) {
+  async submit(e: SubmitEvent) {
     if (!this.loading) {
       e.preventDefault()
       this.element.classList.remove('besedka-comment-error')
+
       if (!this.body.value.trim()) {
         this.element.classList.add('besedka-comment-error')
         this.body.focus()
@@ -96,55 +103,57 @@ export default class NewCommentForm<R> {
         this.loading = true
         this.element.classList.add('besedka-loading')
         this.button.disabled = true
-
-        const body = this.body.value
-        const name = this.name?.value
-        const token = getToken()
-
         try {
-          const { json } = await request<R>(this.url(), Object.assign({
-            payload: { body, name, token }
-          }, window.__besedka.req), this.method())
-          if (json) {
-            this.callback(json)
-            this.reset()
-          }
-          this.element.classList.remove('besedka-previewing')
-        } catch {
-          this.element.classList.add('besedka-comment-error')
-          this.body.focus()
+          await (this.previewing ? this.comment() : this.showPreview())
         } finally {
-          this.button.disabled = false
           this.loading = false
           this.element.classList.remove('besedka-loading')
+          this.button.disabled = false
         }
       }
     }
   }
 
-  async showPreview() {
-    if (!this.loading) {
-      if (!this.body.value.trim()) {
-        this.element.classList.add('besedka-comment-error')
-        this.body.focus()
-      } else {
-        this.loading = true
-        this.element.classList.add('besedka-loading')
-        try {
-          const { text } = await request<R>('/api/preview', Object.assign({
-            payload: this.body.value
-          }, window.__besedka.req), 'POST')
+  async comment() {
+    const body = this.body.value
+    const name = this.name?.value
+    const token = getToken()
 
-          this.element.classList.add('besedka-previewing')
-          this.preview.innerHTML = text
-        } catch {
-          this.element.classList.add('besedka-comment-error')
-          this.element.classList.remove('besedka-previewing')
-        } finally {
-          this.loading = false
-          this.element.classList.remove('besedka-loading')
-        }
+    try {
+      const { json } = await request<R>(this.url(), Object.assign({
+        payload: { body, name, token }
+      }, window.__besedka.req), this.method())
+      if (json) {
+        this.callback(json)
+        this.reset()
       }
+    } catch {
+      this.element.classList.add('besedka-comment-error')
+      this.body.focus()
+    } finally {
+      this.element.classList.remove('besedka-previewing')
+      this.button.textContent = 'Review comment'
+      this.previewing = false
+    }
+  }
+
+  async showPreview() {
+    try {
+      const { text } = await request<R>('/api/preview', Object.assign({
+        payload: this.body.value
+      }, window.__besedka.req), 'POST')
+
+      this.previewBody.innerHTML = text
+      this.previewAuthor.textContent = this.name ? this.name.value.trim() || 'Anonymous' : window.__besedka.user.name!
+      this.previewTimestamp.textContent = "just now"
+      this.element.classList.add('besedka-previewing')
+      this.previewing = true
+      this.button.textContent = "Send"
+    } catch {
+      this.element.classList.add('besedka-comment-error')
+      this.element.classList.remove('besedka-previewing')
+      this.previewing = true
+      this.body.focus()
     }
   }
 

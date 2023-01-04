@@ -5,14 +5,14 @@ distributed as a single executable binary, which you can download and run on you
 
 ### Features
 
-* Portable (single binary), small (< 5kb), fast
+* Portable, small, fast (< 5KB)
 * Free, open, no ads, no tracking, no bullshit
-* Markdown
+* Markdown with preview
 * Moderation
 * No social logins, No user registration, confirmation emails, etc.
 * Integrate your existing users or allow anonymous commenting
 * Multiple sites
-* Use your own CSS or pick one of the themes
+* Use your own CSS or pick a theme
 
 ### ⚡️ Quickstart
 
@@ -43,13 +43,15 @@ That's it!
 
 ### 🎨 Styling
 
-To keep things light and simple there is no CSS loaded for the commenting widget by default. You can
-add custom styles in your own site-wide stylesheet. Simply look at one of the existing themes for a
-reference to the used classes. Alternatively, you can include a theme stylesheet:
+To keep things light and simple there is no CSS loaded for the commenting widget by default. Besedka
+includes a customisable default theme, which can be included with the following `link` tag:
 
 ```html
 <link href="https://your-besedka-server.com/themes/default.css" rel="stylesheet" />
 ```
+
+The default theme respects the color scheme user preference, but it's easy to override the colors as
+they are all defined using CSS properties.
 
 More theme contributions are welcome!
 
@@ -166,5 +168,7 @@ results in a different signature than this:
 
 All user keys are optional except when the site configuration doesn't allow anonymous posting. In
 such case, you must pass a signed user with at least a `name` key that is not empty. The `avatar`
-key should be any valid `src` value for an `<img />` tag.
+key should be any valid `src` value for an `<img />` tag, although I recommend against using a
+`data:image` attribute because this is saved with each comment record and it will result in a larger
+size of the database file.
 

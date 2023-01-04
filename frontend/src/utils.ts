@@ -94,3 +94,34 @@ export function debounce(fn: Function, delay = 500) {
     timeout = setTimeout(() => fn(), delay)
   }
 }
+
+export function timeago(date: Date): string {
+  const now = new Date().getTime()
+  const secondsAgo = (now - date.getTime()) / 1000
+  const minutesAgo = Math.floor(secondsAgo / 60)
+
+  if (minutesAgo < 2) return "just now"
+  if (minutesAgo < 60) return `${minutesAgo} minutes ago`
+
+  const hoursAgo = Math.floor(minutesAgo / 60)
+  if (hoursAgo == 1) return "an hour ago"
+  if (hoursAgo < 12) return `${hoursAgo} hours ago`
+  if (hoursAgo < 24) return "yesterday"
+
+  const daysAgo = Math.floor(hoursAgo / 24)
+  if (daysAgo == 1) return "yesterday"
+  if (daysAgo < 7) return `${daysAgo} days ago`
+  if (daysAgo < 14) return "a week ago"
+
+  const weeksAgo = Math.floor(daysAgo / 7)
+  if (daysAgo < 30) return `${weeksAgo} weeks ago`
+
+  const monthsAgo = Math.floor(daysAgo / 30)
+  if (monthsAgo == 1) return "a month ago"
+  if (monthsAgo < 12) return `${monthsAgo} months ago`
+  if (monthsAgo < 15) return "a year ago"
+  if (monthsAgo < 23) return "more than a year ago"
+
+  const yearsAgo = Math.floor(monthsAgo / 12)
+  return `${yearsAgo} years ago`
+}

@@ -87,9 +87,9 @@ pub struct Base64(Vec<u8>);
 
 impl Serialize for Base64 {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.collect_str(&base64::display::Base64Display::with_config(
+        serializer.collect_str(&base64::display::Base64Display::from(
             &self.0,
-            base64::STANDARD,
+            &base64::engine::DEFAULT_ENGINE,
         ))
     }
 }
