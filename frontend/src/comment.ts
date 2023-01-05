@@ -21,13 +21,13 @@ export default class Comment {
     this.comment = comment
     this.buildComment()
 
-    if (window.__besedka.user.moderator && !this.comment.reviewed) {
-      this.element.append(this.createApproveButton())
-    }
-
     if (window.__besedka.user.moderator || (this.comment.owned && this.withinEditingPeriod())) {
       this.element.append(this.createEditControls())
       this.element.append(this.createDeleteButton())
+    }
+
+    if (window.__besedka.user.moderator && !this.comment.reviewed) {
+      this.element.append(this.createApproveButton())
     }
 
     this.buildReplies()
@@ -130,7 +130,7 @@ export default class Comment {
         this.comment.html_body = html_body
         this.comment.body = body
         this.body.innerHTML = html_body
-        this.body.classList.add('besedka-edited-comment')
+        this.element.classList.add('besedka-edited-comment')
         this.element.classList.remove('besedka-editing-comment')
         editForm.destroy()
       }, () => {

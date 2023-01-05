@@ -1,4 +1,4 @@
-const HOST = "http://besedka.com:6353"
+const HOST = "http://192.168.1.45:6353"
 
 export function safeParse(text: string | undefined, def = {}) {
   try {

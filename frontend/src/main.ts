@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let userObject = safeParse(user)
 
     if (logged) {
-      userObject = { name: logged.name, avatar: logged.avatar, moderator: true }
+      userObject = { name: logged.name, avatar: logged.avatar, moderator: true, op: logged.op }
     }
 
     if (user) user = btoa(user.trim())

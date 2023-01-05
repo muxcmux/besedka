@@ -1,5 +1,7 @@
 #besedka {
   line-height: 1.5;
+  overflow-x: hidden;
+
   --red: #f27983;
   --blue: #399ee6;
   --green: #a6cc70;
@@ -21,7 +23,18 @@
   --button-hover: rgba(0,0,0,.04);
   --gap: 1rem;
   --lhs: 2rem;
-  --rhs: calc(100% - 1rem - var(--lhs));
+  --rhs: calc(100% - var(--gap) - var(--lhs));
+  --lhs-gap: calc(var(--lhs) + var(--gap));
+
+  @media screen and (max-width: 500px) {
+    --lhs: 0px;
+    --rhs: 100%;
+    --lhs-gap: 0px;
+    .besedka-avatar { display: none }
+    .besedka-comment-body { margin-top: var(--gap) }
+    .besedka-comment-preview { margin-top: calc(2 * var(--gap)) }
+    button { font-size: .8rem !important }
+  }
 
   @media screen and (prefers-color-scheme: dark) {
     --blue: #3f688f;

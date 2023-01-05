@@ -35,6 +35,7 @@ async fn main() -> anyhow::Result<()> {
             cli::ModeratorsCommands::Add(args) => cli::moderators::create(&db, args).await,
             cli::ModeratorsCommands::List => cli::moderators::list(&db).await,
             cli::ModeratorsCommands::Remove { name } => cli::moderators::remove(&db, &name).await,
+            cli::ModeratorsCommands::Update(args) => cli::moderators::update(&db, args).await,
         },
     };
 

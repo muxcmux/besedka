@@ -76,7 +76,7 @@ export default class ModeratorControls {
           if (status === 401) {
             message("Invalid credentials", "error", msg)
           } else if(json) {
-            const user = { name: json.name, sid: json.sid, avatar: json.avatar, moderator: true }
+            const user = { name: json.name, sid: json.sid, avatar: json.avatar, moderator: true, op: json.op }
             window.localStorage.setItem('__besedka_mod', JSON.stringify(user))
             window.__besedka.user = user
             window.__besedka.req.sid = json.sid

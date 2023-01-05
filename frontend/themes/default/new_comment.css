@@ -75,7 +75,7 @@
 }
 
 .besedka-post-comment-button {
-  margin-left: calc(var(--lhs) + var(--gap));
+  margin-left: var(--lhs-gap);
   overflow: hidden;
   background: var(--blue);
   color: white;

@@ -9,8 +9,8 @@
     border-top: none;
     display: block;
     position: relative;
-    padding: 1rem 0 0 2.8rem;
-    box-shadow: -1px 0 0 0 var(--separator-color);
+    padding: var(--gap) 0 0 calc(0.8rem + var(--lhs));
+    box-shadow: 1px 0 0 0 inset var(--separator-color);
 
     &::before,
     &::after {
@@ -19,7 +19,7 @@
       width: .5rem;
       height: 1px;
       background: var(--separator-color);
-      left: -1px;
+      left: 0;
       top: 1.6rem;
     }
 
@@ -27,7 +27,6 @@
       width: 1px;
       height: 1.6rem;
       background: var(--separator-color);
-      left: -1px;
       top: 0;
     }
 
@@ -50,25 +49,50 @@
       left: 1rem;
       --lhs: 1.2rem;
     }
+
+    &.besedka-edited-comment:not(.besedka-unreviewed-comment) > .besedka-comment-timestamp::after,
+    &.besedka-unreviewed-comment:not(.besedka-edited-comment) > .besedka-comment-timestamp::after,
+    &.besedka-unreviewed-comment.besedka-edited-comment > .besedka-comment-timestamp::after {
+      margin-left: .25rem;
+      font-size: .9em;
+      content: '(Edited)';
+    }
+
+    &.besedka-unreviewed-comment:not(.besedka-edited-comment) > .besedka-comment-timestamp::after {
+      content: '(Awaiting approval)';
+    }
+
+    &.besedka-unreviewed-comment.besedka-edited-comment > .besedka-comment-timestamp::after {
+      content: '(Awaiting approval) (Edited)';
+    }
+
+    &.besedka-unreviewed-comment > .besedka-comment-timestamp::after { color: var(--red) }
   }
 
   .besedka-comment-author {
-    font-size: .9em;
-    opacity: .55;
-
     &::before { content: '— ' }
+    &::after { margin: 0 0 0 .3rem }
   }
 
   .besedka-comment-author,
-  .besedka-comment-timestamp { margin-left: .2rem }
+  .besedka-comment-timestamp {
+    margin-left: .3rem;
+    font-size: .9em;
+    opacity: .5;
+  }
 
-  .besedka-comment-timestamp { position: relative; top: 0; left: 0; font-size: .9em }
+  .besedka-comment-timestamp {
+    position: relative;
+    top: 0;
+    left: 0;
+  }
 
   .besedka-comment-body { margin-left: 0 }
 
   &:empty { display: none }
 
   .besedka-edit-comment,
+  .besedka-approve-comment,
   .besedka-delete-comment {
     width: .8rem;
     height: .8rem;
@@ -81,7 +105,7 @@
 }
 
 .besedka-replying .besedka-replies .besedka-comment:last-child {
-  box-shadow: -1px 0 0 0 var(--separator-color);
+  box-shadow: 1px 0 0 0 inset var(--separator-color);
 }
 
 
@@ -89,7 +113,8 @@
   width: 100%;
   position: relative;
   order: 6;
-  margin: var(--gap) 0 0 calc(var(--lhs) + var(--gap));
+  margin: var(--gap) 0 0 var(--lhs-gap);
+  font-size: .8em;
 
   .besedka-avatar {
     margin: 0 calc(-1 * var(--gap)) 0 var(--gap);
@@ -108,7 +133,7 @@
     width: .5rem;
     height: 1px;
     background: var(--separator-color);
-    left: -1px;
+    left: 0;
     top: .6rem;
   }
 
@@ -116,7 +141,7 @@
     width: 1px;
     height: calc(var(--gap) * 1.6);
     background: var(--separator-color);
-    left: -1px;
+    left: 0;
     top: calc(-1 * var(--gap));
   }
 
@@ -131,39 +156,39 @@
   &.besedka-previewing {
     display: block;
     position: relative;
-    padding: 0 0 0 2.8rem;
+    padding: 0 0 0 calc(var(--lsh) + 0.8rem);
 
-    &::before { top: .8rem }
+    &::before { top: .6rem }
     &::after {
-      height: calc(var(--gap) * 1.8);
+      height: calc(var(--gap) * 1.6);
     }
 
     .besedka-avatar {
       position: absolute;
       margin: 0;
       left: 1rem;
-      top: .2rem;
+      top: 0;
     }
 
-    .besedka-comment-author-preview {
-      font-size: .9em;
-      opacity: .55;
-
+    .besedka-author-preview {
       &::before { content: '— ' }
+      &::after { margin: 0 0 0 .3rem }
     }
 
-    .besedka-comment-author-preview,
+    .besedka-author-preview,
     .besedka-timestamp-preview {
-      margin-left: .2rem;
+      opacity: calc(0.9 * 0.5);
+      font-size: .9em;
+      margin-left: .3rem;
       position: relative;
       display: inline;
     }
 
-    .besedka-timestamp-preview { position: relative; top: 0; left: 0; font-size: .9em }
+    .besedka-timestamp-preview { position: relative; top: 0; left: 0 }
 
     .besedka-comment-preview {
+      opacity: .9;
       margin-left: 0;
-      font-size: .8em;
       width: unset;
       min-height: unset;
       display: inline;
@@ -179,13 +204,15 @@
       }
     }
 
-    margin-bottom: 5rem;
-
     > button {
-      position: absolute;
-      bottom: -4rem;
       margin-left: 0;
       margin-right: var(--gap);
+    }
+
+    .besedka-timestamp-preview::after {
+      content: '';
+      display: block;
+      margin-top: var(--gap);
     }
   }
 }

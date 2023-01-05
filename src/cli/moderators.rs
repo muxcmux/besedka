@@ -1,6 +1,8 @@
 use sqlx::SqlitePool;
 
-use crate::db::moderators::{Moderator, all, insert_moderator, find_by_name, delete};
+use crate::db::moderators::{self, Moderator, all, insert_moderator, find_by_name, delete};
+
+use super::{ModeratorsAddCommandArgs, ModeratorsUpdateCommandArgs};
 
 pub async fn list(db: &SqlitePool) {
     match all(db).await {
@@ -14,7 +16,7 @@ pub async fn list(db: &SqlitePool) {
     }
 }
 
-pub async fn create(db: &SqlitePool, moderator: super::ModeratorsAddCommandArgs) {
+pub async fn create(db: &SqlitePool, moderator: ModeratorsAddCommandArgs) {
     match insert_moderator(db, moderator).await {
         Err(error) => {
             match error {
@@ -39,6 +41,19 @@ pub async fn remove(db: &SqlitePool, name: &str) {
         Ok(_) => {
             delete(db, name).await.unwrap();
             println!("Deleted moderator {}", name);
+        }
+    }
+}
+
+pub async fn update(db: &SqlitePool, args: ModeratorsUpdateCommandArgs) {
+    match find_by_name(db, &args.name).await {
+        Err(_) => {
+            println!("Moderator {} not found.", &args.name)
+        },
+        Ok(_) => {
+            let updated = moderators::update(&db, &args.name, args.op, args.avatar, args.password).await;
+            println!("Success!");
+            print_moderator(updated.unwrap());
         }
     }
 }

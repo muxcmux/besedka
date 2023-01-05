@@ -100,19 +100,37 @@ pub enum ModeratorsCommands {
     /// List all moderators
     List,
     #[command(alias("create"))]
+    /// Create a moderator
     Add(ModeratorsAddCommandArgs),
     /// Remove a moderator
     #[command(alias("delete"))]
-    Remove { name: String }
+    Remove { name: String },
+    /// Update a moderator
+    #[command(alias("edit"))]
+    Update(ModeratorsUpdateCommandArgs),
 }
 
 #[derive(Debug, Clone, Args)]
-/// Create or update a moderator
 pub struct ModeratorsAddCommandArgs {
     /// Name to log in with also displayed in comments, must be unique
     pub name: String,
     /// Password used for login
     pub password: String,
+    #[arg(short, long)]
+    /// Avatar - any valid src value for an img tag
+    pub avatar: Option<String>,
+    #[arg(long)]
+    /// Is this moderator also an OP
+    pub op: Option<bool>,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct ModeratorsUpdateCommandArgs {
+    /// Name of the moderator to update
+    pub name: String,
+    #[arg(short, long)]
+    /// Password used for login
+    pub password: Option<String>,
     #[arg(short, long)]
     /// Avatar - any valid src value for an img tag
     pub avatar: Option<String>,

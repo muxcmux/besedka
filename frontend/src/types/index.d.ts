@@ -66,12 +66,14 @@ declare global {
     name?: string
     moderator?: boolean
     avatar?: string
+    op?: boolean
   }
 
   interface LoginResponse {
     name: string,
     sid: string,
     avatar?: string
+    op?: boolean
   }
 }
 

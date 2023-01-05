@@ -1,11 +1,11 @@
 import { createButton, createElement, debounce, getToken, request } from "./utils"
 
 export default class NewCommentForm<R> {
-  element: HTMLElement
+  element: HTMLFormElement
   loading = false
   previewing = false
   button = createButton('Review comment', 'post-comment-button')
-  editButton = createButton('Make edits', 'make-edits-button', { type: 'button' })
+  editButton = createButton('Edit', 'make-edits-button', { type: 'button' })
   body = createElement<HTMLTextAreaElement>('textarea', 'comment-textarea', { placeholder: 'Leave a comment' })
   previewBody = createElement<HTMLDivElement>('div', 'comment-preview')
   previewAuthor = createElement<HTMLDivElement>('div', 'author-preview')
@@ -26,6 +26,7 @@ export default class NewCommentForm<R> {
 
     this.init()
     this.initUi()
+    this.initElementClasses()
     this.attachEvents()
   }
 
@@ -36,6 +37,7 @@ export default class NewCommentForm<R> {
 
   initUi() {
     this.element.append(this.avatar)
+
     if (window.__besedka.user.avatar) {
       this.avatar.classList.remove('besedka-no-avatar')
       this.avatar.append(createElement<HTMLImageElement>('img', '', { src: window.__besedka.user.avatar, loading: 'lazy' }))
@@ -51,6 +53,11 @@ export default class NewCommentForm<R> {
       this.body, this.previewBody, this.previewAuthor,
       this.previewTimestamp, this.button, this.editButton
     )
+  }
+
+  initElementClasses() {
+    if (window.__besedka.user.moderator) this.element.classList.add('besedka-moderator-comment')
+    if (window.__besedka.user.op) this.element.classList.add('besedka-op-comment')
   }
 
   attachEvents() {

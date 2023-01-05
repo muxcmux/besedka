@@ -30,7 +30,7 @@
   .besedka-comment-preview {
     display: initial;
     width: 100%;
-    margin-left: calc(var(--gap) + var(--lhs));
+    margin-left: var(--lhs-gap);
     margin-top: var(--gap);
   }
 

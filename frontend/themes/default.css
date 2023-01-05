@@ -50,6 +50,7 @@
 .besedka-editing-comment {
   > .besedka-delete-comment { margin-left: auto }
   > .besedka-edit-comment,
+  > .besedka-approve-comment,
   > .besedka-comment-body { display: none }
   > .besedka-comment-preview { display: none }
 }

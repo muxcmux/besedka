@@ -1,6 +1,6 @@
 #besedka-heading {
   font-size: 1.33rem;
-  margin: 0 0 1rem calc(var(--lhs) + var(--gap));
+  margin: 0 0 1rem var(--lhs-gap);
 }
 
 #besedka-comments {
@@ -28,7 +28,7 @@
   background: var(--fg);
   color: transparent;
   padding: 0;
-  margin: 0 0 0 calc(var(--lhs) + var(--gap));
+  margin: 0 90% 0 var(--lhs-gap);
   opacity: .34;
   height: 1.2rem;
   width: 1.2rem;
@@ -60,7 +60,7 @@
   opacity: .55;
   position: absolute;
   top: 2.2rem;
-  left: calc(var(--gap) + var(--lhs));
+  left: var(--lhs-gap);
 }
 
 .besedka-timestamp-preview { top: 1.2rem }
@@ -72,14 +72,16 @@
 .besedka-edit-comment-form,
 .besedka-replies {
   width: 100%;
-  margin-left: calc(var(--gap) + var(--lhs));
+  margin-left: var(--lhs-gap);
 }
 
-.besedka-moderator-comment > .besedka-comment-author {
+.besedka-moderator-comment > .besedka-comment-author,
+.besedka-moderator-comment > .besedka-author-preview {
   color: var(--orange);
 }
 
-.besedka-op-comment > .besedka-comment-author::after {
+.besedka-op-comment > .besedka-comment-author::after,
+.besedka-op-comment > .besedka-author-preview::after {
   --op-color: var(--fg);
   content: 'OP';
   color: var(--op-color);
@@ -93,10 +95,29 @@
   padding: .1rem .25rem;
 }
 
-.besedka-op-comment.besedka-moderator-comment > .besedka-comment-author::after {
+.besedka-op-comment.besedka-moderator-comment > .besedka-comment-author::after,
+.besedka-op-comment.besedka-moderator-comment > .besedka-author-preview::after {
   --op-color: var(--orange);
 }
 
 .besedka-replying {
   .besedka-add-reply { display: none }
 }
+
+.besedka-edited-comment:not(.besedka-unreviewed-comment) > .besedka-comment-timestamp::after,
+.besedka-unreviewed-comment:not(.besedka-edited-comment) > .besedka-comment-timestamp::after,
+.besedka-unreviewed-comment.besedka-edited-comment > .besedka-comment-timestamp::after {
+  margin-left: .25rem;
+  font-size: .9em;
+  content: '(Edited)';
+}
+
+.besedka-unreviewed-comment:not(.besedka-edited-comment) > .besedka-comment-timestamp::after {
+  content: '(Awaiting approval)';
+}
+
+.besedka-unreviewed-comment.besedka-edited-comment > .besedka-comment-timestamp::after {
+  content: '(Awaiting approval) (Edited)';
+}
+
+.besedka-unreviewed-comment > .besedka-comment-timestamp::after { color: var(--red) }

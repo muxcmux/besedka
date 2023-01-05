@@ -92,3 +92,39 @@ pub async fn delete(db: &SqlitePool, name: &str) -> Result<sqlx::sqlite::SqliteQ
         .execute(db)
         .await
 }
+
+pub async fn update(db: &SqlitePool, name: &str, op: Option<bool>, avatar: Option<String>, password: Option<String>) -> Result<Moderator> {
+    let mut q = String::from("UPDATE moderators SET name = ?");
+
+    if op.is_some() { q.push_str(", op = ?") }
+    if avatar.is_some() { q.push_str(", avatar = ?") }
+    if password.is_some() { q.push_str(", password = ?") }
+
+    q.push_str(" WHERE name = ?; SELECT * FROM moderators WHERE name = ? LIMIT 1");
+
+    let mut query = query_as::<_, Moderator>(&q).bind(name);
+
+    if op.is_some() { query = query.bind(op.unwrap()) }
+    if avatar.is_some() { query = query.bind(avatar.unwrap()) }
+
+    if password.is_some() {
+        let pass = password.unwrap();
+        let pwd = pass.as_bytes();
+        let salt = SaltString::generate(&mut OsRng);
+        let password_hash = Argon2::default()
+            .hash_password(pwd, &salt)
+            .unwrap()
+            .to_string();
+
+        query = query.bind(password_hash);
+
+        let _ = query!("UPDATE moderators SET sid = NULL WHERE name = ?", name).execute(db).await?;
+    }
+
+    query = query.bind(name);
+    query = query.bind(name);
+
+    Ok(
+        query.fetch_one(db).await?
+    )
+}
