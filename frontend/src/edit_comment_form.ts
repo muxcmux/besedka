@@ -23,7 +23,7 @@ export default class EditCommentForm<R> extends NewCommentForm<R> {
   }
 
   init() {
-    this.button = createButton('Update comment', 'post-comment-button')
+    // no op
   }
 
   initUi() {
@@ -32,7 +32,8 @@ export default class EditCommentForm<R> extends NewCommentForm<R> {
       this.destroy()
       this.onCancel()
     })
-    this.element.append(this.body, this.button, this.cancel)
+
+    this.element.append(this.body, this.previewBody, this.button, this.cancel)
   }
 
   setComment(comment: CommentRecord) {

@@ -37,7 +37,7 @@
   }
 
   .besedka-comment-textarea {
-    box-shadow: 0 0px 0 2px var(--input-highlight);
+    box-shadow: 0 0 0 2px var(--input-highlight);
   }
 
   &.besedka-anonymous-user {
@@ -51,6 +51,6 @@
   > .besedka-delete-comment { margin-left: auto }
   > .besedka-edit-comment,
   > .besedka-approve-comment,
-  > .besedka-comment-body { display: none }
+  > .besedka-comment-body,
   > .besedka-comment-preview { display: none }
 }

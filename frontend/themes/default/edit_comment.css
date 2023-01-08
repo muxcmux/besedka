@@ -5,22 +5,32 @@
   flex-wrap: wrap;
 
   .besedka-comment-textarea {
-    width: 100%;
     order: 0;
+    width: calc(100% - 2px);
+    margin-left: 0;
   }
 
   .besedka-post-comment-button {
     order: 3;
     margin-left: 0;
   }
-}
 
-.besedka-cancel-editing {
-  position: absolute;
-  top: -3.5rem;
-  right: 0;
-  background: transparent;
-  color: var(--fg);
+  .besedka-cancel-editing {
+    order: 3;
+    margin-left: var(--gap);
+  }
 
-  &:hover { text-decoration: underline }
+  &.besedka-previewing .besedka-comment-preview {
+    margin-top: 0 !important;
+    margin-left: 0;
+  }
+
+  @media screen and (max-width: 500px) {
+    margin-top: var(--gap);
+
+    .besedka-comment-textarea {
+      margin-left: 2px;
+      width: calc(100% - 4px);
+    }
+  }
 }
