@@ -5,7 +5,7 @@ distributed as a single executable binary, which you can download and run on you
 
 ### Features
 
-* Portable, small, fast (< 5KB)
+* Portable, small, fast
 * Free, open, no ads, no tracking, no bullshit
 * Markdown with preview
 * Moderation
@@ -36,7 +36,7 @@ where `https://your-besedka-server.com` is the domain pointing to the server whi
 Finally put this div where you want your comments to appear:
 
 ```html
-<div id="besedka"></div>
+<div id="besedka" data-api="https://your-besedka-server.com"></div>
 ```
 
 That's it!

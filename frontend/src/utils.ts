@@ -1,4 +1,4 @@
-const HOST = "http://192.168.1.23:6353"
+const HOST = document.getElementById('besedka')?.dataset.api
 
 export function safeParse(text: string | undefined, def = {}) {
   try {

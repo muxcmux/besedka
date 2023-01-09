@@ -1,0 +1,16 @@
+!#/bin/env bash
+
+rm -r frontend/dist
+mkdir frontend/dist
+mkdir frontend/dist/themes
+
+cd frontend
+
+yarn build
+
+mv dist/assets/app.*.js dist/comments.js
+mv dist/assets/default.*.css dist/themes/default.css
+
+cd ..
+
+cargo build --release
