@@ -172,3 +172,27 @@ key should be any valid `src` value for an `<img />` tag, although I recommend a
 `data:image` attribute because this is saved with each comment record and it will result in a larger
 size of the database file.
 
+### Compiling from source
+
+Make sure you have [NodeJS](https://nodejs.org/en/) and the [Rust toolchain](https://www.rust-lang.org/)
+installed on your machine. Once you clone the repo, navigate to the `frontend` dir and install all
+node dependencies:
+
+    $ yarn install
+
+Next, create a dummy database and point `DATABASE_URL` env var to it from an `.env` file:
+
+    $ touch besedka.sqlite && echo "DATABASE_URL=sqlite://besedka.sqlite" > .env
+
+This is needed because besedka uses compile-time query checking for some of the database queries.
+Once done, migrate the database:
+
+    $ cargo install sqlx-cli && sqlx migrate run
+
+You can now run the release script from the project root:
+
+    $ ./release
+
+This will compile the front end, move the asset files to `frontend/dist`, compile the binary, and
+move it to `releases/besedka-{version}-{target-triple}.tar.gz`. If you simply want the executable,
+just look at what the release script does - it is very simple and should be self-explanatory.
