@@ -16,9 +16,9 @@ distributed as a single executable binary, which you can download and run on you
 
 ### ⚡️ Quickstart
 
-Download and extract the latest build from the releases page on GitHub for your architecture and
-make sure the binary is executable. Next, add your site (use `besedka sites add -h` to see all
-available options):
+Download and extract the latest build from the [releases page on GitHub](https://github.com/muxcmux/besedka/releases)
+for your architecture and make sure the binary is executable. Next, add your site (use
+`besedka sites add -h` to see all available options):
 
     $ besedka sites add my.blog.com --private false --anonymous true
 
