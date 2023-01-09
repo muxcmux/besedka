@@ -1,31 +1,5 @@
 !#/bin/env bash
 set -e
 
-rm -r frontend/dist
-
-cd frontend
-
-yarn build
-
-mkdir -p dist/themes
-
-mv dist/assets/app.*.js dist/comments.js
-mv dist/assets/default.*.css dist/themes/default.css
-
-cd ..
-
-tt=$(gcc -dumpmachine)
-ver=$(awk -F ' = ' '$1 ~ /version/ { gsub(/[\"]/, "", $2); printf("%s",$2) }' Cargo.toml)
-name="besedka-$ver-$tt"
-release="releases/$name"
-
-cargo build --release
-
-mkdir -p "$release"
-
-mv target/release/besedka "$release/besedka"
-cd releases
-tar -czvf "$name.tar.gz" $name
-rm -rf "$name"
-
-echo "Released $name"
+./build-frontend
+./build-exec

@@ -1,0 +1,15 @@
+!#/bin/env bash
+set -e
+
+rm -r frontend/dist
+
+cd frontend
+
+yarn build
+
+mkdir -p dist/themes
+
+mv dist/assets/app.*.js dist/comments.js
+mv dist/assets/default.*.css dist/themes/default.css
+
+cd ..
