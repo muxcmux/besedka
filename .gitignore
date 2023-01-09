@@ -1,5 +1,6 @@
 /certs
 /target
+/releases
 /frontend/dist
 /spec/examples.txt
 *.sqlite
