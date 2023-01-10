@@ -43,17 +43,31 @@ That's it!
 
 ### 🎨 Styling
 
-To keep things light and simple there is no CSS loaded for the commenting widget by default. Besedka
-includes a customisable default theme, which can be included with the following `link` tag:
+Besedka comes with an opt-in customisable default theme. To include it, use the following `link`
+tag:
 
 ```html
 <link href="https://your-besedka-server.com/themes/default.css" rel="stylesheet" />
 ```
 
-The default theme respects the color scheme user preference, but it's easy to override the colors as
-they are all defined using CSS properties.
+The default theme is a good start to build on if you like the typical comment widget UX.
 
 More theme contributions are welcome!
+
+### Single Page Apps (React or other fancy js frameworks)
+
+Including the besedka script will build an instance of besedka and bind it to `window.__besedka`. It
+also attaches an event to `DOMContentLoaded` which calls `window.__besedka.run()`.
+
+If your app changes browser URLs without reloading the page (e.g. SPAs), you might need to call
+`window.__besedka.run()` manually at the appropriate time, for example on the window's popstate.
+Here's how to do it if you are using Rails' [Hotwire](https://hotwired.dev/)
+
+```javascript
+document.addEventListener('turbo:load', () => {
+  window.__besedka.run()
+})
+```
 
 ### Multiple site configuration
 
@@ -178,7 +192,7 @@ Make sure you have [NodeJS](https://nodejs.org/en/) and the [Rust toolchain](htt
 installed on your machine. Once you clone the repo, navigate to the `frontend` dir and install all
 node dependencies:
 
-    $ yarn install
+    $ npm install
 
 Next, create a dummy database and point `DATABASE_URL` env var to it from an `.env` file:
 

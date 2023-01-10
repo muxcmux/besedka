@@ -1,5 +1,3 @@
-const HOST = document.getElementById('besedka')?.dataset.api
-
 export function safeParse(text: string | undefined, def = {}) {
   try {
     return JSON.parse(text || '{}')
@@ -44,7 +42,8 @@ export function createButton(text: string, className?: string, attributes?: {}):
 export async function request<T>(endpoint: string, data: {}, method?: string, errorTarget?: HTMLDivElement): Promise<{ status: number, text: string, json: T | null }> {
   const body = JSON.stringify(data, replacer)
   try {
-    const response = await fetch(`${HOST}${endpoint}`, {
+    const host = document.getElementById('besedka')!.dataset.api
+    const response = await fetch(`${host}${endpoint}`, {
       body,
       method: method || "POST",
       mode: "cors",

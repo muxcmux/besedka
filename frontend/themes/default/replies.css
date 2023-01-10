@@ -11,6 +11,7 @@
     position: relative;
     padding: var(--gap) 0 0 calc(0.8rem + var(--lhs));
     box-shadow: 1px 0 0 0 inset var(--separator-color);
+    margin: 0;
 
     &::before,
     &::after {

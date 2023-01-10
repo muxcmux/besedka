@@ -10,6 +10,7 @@
   mask-position: center center;
   mask-repeat: no-repeat;
   mask-size: 100%;
+  padding: 0;
 
   &:hover { opacity: .9 }
 }

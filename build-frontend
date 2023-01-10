@@ -5,11 +5,9 @@ rm -r frontend/dist
 
 cd frontend
 
-yarn build
-
-mkdir -p dist/themes
+npm run build
 
 mv dist/assets/app.*.js dist/comments.js
-mv dist/assets/default.*.css dist/themes/default.css
+mv dist/assets/default.*.css dist/default.css
 
 cd ..

@@ -1,10 +1,12 @@
 import NewCommentForm from "./new_comment_form"
 import Comment from "./comment"
-import {getToken, message, request, setToken} from "./utils"
+import {getToken, message, request, setToken, safeParse} from "./utils"
 import ModeratorControls from "./moderator_controls"
 
 export default class App {
-  element: HTMLElement
+  running = false
+  // @ts-ignore strictPropertyInitialization
+  element: HTMLElement | null
   config: Config | null = null
   req: ApiRequest
   user: User
@@ -25,13 +27,47 @@ export default class App {
   // @ts-ignore strictPropertyInitialization
   cursor: string | null
 
-  constructor(element: HTMLDivElement, config: ApiRequest, user: User) {
-    this.element = element
-    this.req = config
-    this.user = user
+  configure() {
+    const configContainer = document.getElementById('besedka-config')
+    const userContainer = document.getElementById('besedka-user')
+
+    let config = configContainer?.innerText
+    let user = userContainer?.innerText
+
+    let { site, path } = safeParse(config)
+
+    const mod = window.localStorage.getItem('__besedka_mod')
+    let logged: LoginResponse | undefined
+    if (mod) { logged = JSON.parse(mod) }
+
+    let userObject = safeParse(user)
+
+    if (logged) {
+      userObject = { name: logged.name, avatar: logged.avatar, moderator: true, op: logged.op }
+    }
+
+    if (user) user = btoa(user.trim())
+
+    let signature = userContainer?.dataset?.signature
+
+    const req: ApiRequest = {
+      site: site || window.location.hostname,
+      path: path || window.location.pathname,
+      user,
+      signature,
+      sid: logged?.sid
+    }
+
+    this.req = req
+    this.user = userObject
+    this.element = document.getElementById('besedka')
   }
 
   async run() {
+    this.configure()
+    if (!this.element || this.running) return;
+
+    this.running = true
     this.element.innerHTML = ''
     this.observed = false
     this.loading = false
@@ -55,10 +91,12 @@ export default class App {
         this.comments.prepend(new Comment(comment).element)
       })
     }
+
+    this.running = false
   }
 
   draw() {
-    this.element.innerHTML = `
+    this.element!.innerHTML = `
       <div id="besedka-moderator-controls"></div>
       <form id="besedka-new-comment"></form>
       <div id="besedka-message"></div>
