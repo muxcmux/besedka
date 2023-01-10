@@ -8,7 +8,9 @@ export default class App {
   // @ts-ignore strictPropertyInitialization
   element: HTMLElement | null
   config: Config | null = null
+  // @ts-ignore strictPropertyInitialization
   req: ApiRequest
+  // @ts-ignore strictPropertyInitialization
   user: User
   // @ts-ignore strictPropertyInitialization
   comments: HTMLOListElement
