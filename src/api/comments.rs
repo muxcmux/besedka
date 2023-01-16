@@ -1,19 +1,19 @@
 use crate::{
-    api::{ApiRequest, Cursor, Error, Context, Result},
+    api::{ApiRequest, Cursor, Error, AppState, Result},
     db::{
         comments::{Comment, self},
         pages::{Page, self},
         sites::Site,
     },
 };
-use axum::{extract::Path, routing::post, Json, Router};
+use axum::{extract::{State, Path}, routing::post, Json, Router};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
 use super::{User, Base64, generate_random_token, verify_read_permission, require_moderator};
 
-pub fn router() -> Router {
+pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/comments", post(index))
         .route("/api/comment", post(create))
@@ -171,15 +171,15 @@ struct ListCommentsRequest {
 
 /// POST /api/comments
 async fn index(
-    ctx: Context,
+    State(db): State<SqlitePool>,
     cursor: Option<Cursor>,
     Json(req): Json<ApiRequest<ListCommentsRequest>>,
 ) -> Result<Json<CommentsPage>> {
-    let (site, user) = req.extract_verified(&ctx.db).await?;
+    let (site, user) = req.extract_verified(&db).await?;
 
     verify_read_permission(&site, &user, None)?;
 
-    let page = pages::find_by_site_and_path(&ctx.db, &req.site, &req.path).await?;
+    let page = pages::find_by_site_and_path(&db, &req.site, &req.path).await?;
 
     let show_only_reviewed = user
         .as_ref()
@@ -187,7 +187,7 @@ async fn index(
     // We need the fetch limit + 1 in order
     // to work out if there is a next page or not
     let (total, parents) = comments::root_comments(
-        &ctx.db,
+        &db,
         page.id,
         COMMENTS_PER_PAGE + 1,
         show_only_reviewed,
@@ -196,7 +196,7 @@ async fn index(
     ).await?;
 
     let replies = comments::replies(
-        &ctx.db,
+        &db,
         show_only_reviewed,
         req.payload.as_ref().map_or(&None, |p| &p.token),
         &parents
@@ -217,19 +217,19 @@ struct PostCommentResponse {
 }
 /// POST /api/comment
 async fn create(
-    ctx: Context,
+    State(db): State<SqlitePool>,
     Json(req): Json<ApiRequest<CommentData>>,
 ) -> Result<Json<PostCommentResponse>> {
-    Ok(post_comment(&ctx.db, req, None).await?)
+    Ok(post_comment(&db, req, None).await?)
 }
 
 /// POST /api/comment/42
 async fn reply(
-    ctx: Context,
+    State(db): State<SqlitePool>,
     Path(comment_id): Path<i64>,
     Json(req): Json<ApiRequest<CommentData>>,
 ) -> Result<Json<PostCommentResponse>> {
-    Ok(post_comment(&ctx.db, req, Some(comment_id)).await?)
+    Ok(post_comment(&db, req, Some(comment_id)).await?)
 }
 
 fn authorize_posting(site: &Site, user: &Option<User>, page: &Page) -> Result<()> {
@@ -350,7 +350,7 @@ struct UpdateCommentResponse {
 }
 /// PUT /api/comment/42
 async fn update(
-    ctx: Context,
+    State(db): State<SqlitePool>,
     Path(comment_id): Path<i64>,
     Json(req): Json<ApiRequest<CommentData>>,
 ) -> Result<Json<UpdateCommentResponse>> {
@@ -359,9 +359,9 @@ async fn update(
         Some(ref data) => {
             if data.body.trim().len() < 1 { return Err(Error::UnprocessableEntity("Comment can't be blank")) }
 
-            let (_, user) = req.extract_verified(&ctx.db).await?;
+            let (_, user) = req.extract_verified(&db).await?;
 
-            let comment = comments::find(&ctx.db, comment_id).await?;
+            let comment = comments::find(&db, comment_id).await?;
 
             ensure_modifiable(
                 user.as_ref(),
@@ -369,7 +369,7 @@ async fn update(
                 &comment
             )?;
 
-            let updated_comment = comments::update(&ctx.db, comment_id, &get_markdown(&data.body)?, &data.body).await?;
+            let updated_comment = comments::update(&db, comment_id, &get_markdown(&data.body)?, &data.body).await?;
 
             Ok(
                 Json(UpdateCommentResponse {
@@ -383,27 +383,27 @@ async fn update(
 
 /// PATCH /api/comment/42
 async fn approve(
-    ctx: Context,
+    State(db): State<SqlitePool>,
     Path(comment_id): Path<i64>,
     Json(req): Json<ApiRequest<()>>,
 ) -> Result<String> {
-    let (_, user) = req.extract_verified(&ctx.db).await?;
+    let (_, user) = req.extract_verified(&db).await?;
     require_moderator(&user)?;
 
-    comments::approve(&ctx.db, comment_id).await?;
+    comments::approve(&db, comment_id).await?;
 
     Ok("Success".to_string())
 }
 
 /// DELETE /api/comment/42
 async fn destroy(
-    ctx: Context,
+    State(db): State<SqlitePool>,
     Path(comment_id): Path<i64>,
     Json(req): Json<ApiRequest<Base64>>,
 ) -> Result<String> {
-    let comment = comments::find(&ctx.db, comment_id).await?;
+    let comment = comments::find(&db, comment_id).await?;
 
-    let (_, user) = req.extract_verified(&ctx.db).await?;
+    let (_, user) = req.extract_verified(&db).await?;
 
     ensure_modifiable(
         user.as_ref(),
@@ -411,7 +411,7 @@ async fn destroy(
         &comment
     )?;
 
-    let _ = comments::delete(&ctx.db, comment_id).await?;
+    let _ = comments::delete(&db, comment_id).await?;
     Ok("Success".to_string())
 }
 

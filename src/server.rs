@@ -1,12 +1,12 @@
 mod assets;
 
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use anyhow::Context;
 
 use axum::{
     routing::get,
-    Router, response::IntoResponse, Extension, body::Bytes
+    Router, response::IntoResponse, body::Bytes
 };
 
 use sqlx::SqlitePool;
@@ -16,7 +16,7 @@ use tower_http::{
     LatencyUnit, timeout::TimeoutLayer, compression::CompressionLayer, cors::CorsLayer,
 };
 
-use crate::api;
+use crate::api::{self, AppState};
 use super::cli::ServerArgs;
 
 use axum_server::tls_rustls::RustlsConfig;
@@ -32,7 +32,7 @@ pub async fn run(config: ServerArgs, db: SqlitePool) -> anyhow::Result<()> {
     tracing::debug!("{:#?}", config);
     tracing::info!("Listening on {}", config.bind);
 
-    let app = router(build_context(db));
+    let app = router(db);
 
     if config.ssl() {
         let ssl_config = RustlsConfig::from_pem_file(
@@ -51,7 +51,9 @@ pub async fn run(config: ServerArgs, db: SqlitePool) -> anyhow::Result<()> {
     }
 }
 
-fn router(context: Arc<api::AppContext>) -> Router {
+fn router(db: SqlitePool) -> Router {
+    let state = AppState { db };
+
     let middleware = ServiceBuilder::new()
         .layer(
             TraceLayer::new_for_http()
@@ -63,7 +65,6 @@ fn router(context: Arc<api::AppContext>) -> Router {
         )
         .layer(CompressionLayer::new())
         .layer(TimeoutLayer::new(Duration::from_secs(5)))
-        .layer(Extension(context))
         .layer(CorsLayer::permissive());
 
     Router::new()
@@ -75,10 +76,7 @@ fn router(context: Arc<api::AppContext>) -> Router {
         .merge(api::pages::router())
         .merge(assets::router())
         .layer(middleware)
-}
-
-fn build_context(db: SqlitePool) -> Arc<api::AppContext> {
-    Arc::new(api::AppContext { db })
+        .with_state(state)
 }
 
 async fn root() -> impl IntoResponse {

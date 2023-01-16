@@ -5,9 +5,8 @@ pub mod sites;
 pub mod pages;
 pub mod login;
 pub mod extractors;
-use std::sync::Arc;
 
-use axum::Extension;
+use axum::extract::FromRef;
 use chrono::{DateTime, Utc};
 use ring::{hmac, rand::{SecureRandom, SystemRandom}};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
@@ -15,11 +14,16 @@ use sqlx::SqlitePool;
 
 use base64::Engine;
 
-pub struct AppContext {
+#[derive(Clone)]
+pub struct AppState {
     pub db: SqlitePool
 }
 
-pub type Context = Extension<Arc<AppContext>>;
+impl FromRef<AppState> for SqlitePool {
+    fn from_ref(app_state: &AppState) -> SqlitePool {
+        app_state.db.clone()
+    }
+}
 
 pub use error::Error;
 

@@ -1,12 +1,16 @@
-use axum::{routing::post, Json, Router};
-use super::{ApiRequest, Context, Result, Error, verify_read_permission};
+use axum::{routing::post, Json, Router, extract::State};
+use sqlx::SqlitePool;
+use super::{ApiRequest, AppState, Result, Error, verify_read_permission};
 
-pub fn router() -> Router {
+pub fn router() -> Router<AppState> {
     Router::new().route("/api/preview", post(preview))
 }
 
-async fn preview(ctx: Context, Json(req): Json<ApiRequest<String>>) -> Result<String> {
-    let (site, user) = req.extract_verified(&ctx.db).await?;
+async fn preview(
+    State(db): State<SqlitePool>,
+    Json(req): Json<ApiRequest<String>>,
+) -> Result<String> {
+    let (site, user) = req.extract_verified(&db).await?;
 
     verify_read_permission(&site, &user, None)?;
 

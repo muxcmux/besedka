@@ -8,7 +8,7 @@ use axum::{
 use chrono::NaiveDateTime;
 use rust_embed::RustEmbed;
 
-use crate::api::Error;
+use crate::api::{AppState, Error};
 
 #[derive(RustEmbed)]
 #[folder = "frontend/"]
@@ -50,7 +50,7 @@ impl<T: Into<String>> IntoResponse for StaticFile<T> {
     }
 }
 
-pub fn router() -> Router {
+pub fn router() -> Router<AppState> {
     Router::new()
         .route("/comments.js", get(comments))
         .route("/themes/:theme", get(theme))
