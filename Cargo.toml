@@ -19,7 +19,7 @@ clap = { version = "4", features = ["derive"] }
 chrono =  { version = "0.4", features = ["clock", "serde"] }
 
 ring = "0.16"
-base64 = "0.20"
+base64 = "0.21"
 argon2 = "0.4"
 rand_core = { version = "0.6", features = ["std"] }
 

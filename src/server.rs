@@ -82,7 +82,5 @@ fn build_context(db: SqlitePool) -> Arc<api::AppContext> {
 }
 
 async fn root() -> impl IntoResponse {
-    String::from("<!DOCTYPE html><html><body>\
-        <p>Hello besedka!</p>\
-    </body></html>")
+    String::from("Hello from Besedka!")
 }

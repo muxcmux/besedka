@@ -15,7 +15,8 @@ pub struct Site {
 
 impl Site {
     pub fn secret(&self) -> String {
-        base64::encode(&self.secret)
+        use base64::{Engine, engine};
+        engine::general_purpose::STANDARD.encode(&self.secret)
     }
 
     pub fn key(&self) -> hmac::Key {

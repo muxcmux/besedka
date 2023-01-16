@@ -6,6 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use std::collections::HashMap;
+use base64::Engine;
 
 use crate::api::{Error, Result};
 
@@ -22,7 +23,7 @@ impl<T: Send + Sync> FromRequestParts<T> for Cursor {
 
         match query.get("cursor") {
             Some(encoded_cursor) => {
-                let decoded_cursor = base64::decode(encoded_cursor)
+                let decoded_cursor = base64::engine::general_purpose::STANDARD.decode(encoded_cursor)
                     .map_err(|err| Error::Anyhow(anyhow!(err)).into_response())?;
                 let cursor: Cursor = serde_json::from_slice(&decoded_cursor)
                     .map_err(|err| Error::Anyhow(anyhow!(err)).into_response())?;

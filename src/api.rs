@@ -13,6 +13,8 @@ use ring::{hmac, rand::{SecureRandom, SystemRandom}};
 use serde::{Serialize, Deserialize, Serializer, Deserializer};
 use sqlx::SqlitePool;
 
+use base64::Engine;
+
 pub struct AppContext {
     pub db: SqlitePool
 }
@@ -32,7 +34,7 @@ pub struct Cursor {
 
 impl Cursor {
     fn encode(&self) -> String {
-        base64::encode(serde_json::to_vec(&self).unwrap())
+        base64::engine::general_purpose::STANDARD.encode(serde_json::to_vec(&self).unwrap())
     }
 }
 
@@ -87,10 +89,11 @@ pub struct Base64(Vec<u8>);
 
 impl Serialize for Base64 {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.collect_str(&base64::display::Base64Display::from(
+        let display = base64::display::Base64Display::new(
             &self.0,
-            &base64::engine::DEFAULT_ENGINE,
-        ))
+            &base64::engine::general_purpose::STANDARD,
+        );
+        serializer.collect_str(&format!("{}", display))
     }
 }
 
@@ -105,7 +108,9 @@ impl<'de> Deserialize<'de> for Base64 {
             }
 
             fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                base64::decode(v).map(Base64).map_err(serde::de::Error::custom)
+                base64::engine::general_purpose::STANDARD.decode(v)
+                    .map(Base64)
+                    .map_err(serde::de::Error::custom)
             }
         }
         deserializer.deserialize_str(Vis)
