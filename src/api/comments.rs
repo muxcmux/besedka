@@ -16,6 +16,7 @@ use super::{User, Base64, generate_random_token, verify_read_permission, require
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/comments", post(index))
+        .route("/api/comments/unreviewed", post(unreviewed))
         .route("/api/comment", post(create))
         .route(
             "/api/comment/:comment_id",
@@ -211,6 +212,68 @@ async fn index(
 }
 
 #[derive(Serialize)]
+struct UnreviewedComment {
+    id: i64,
+    parent_id: Option<i64>,
+    name: String,
+    html_body: String,
+    body: String,
+    avatar: Option<String>,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+    op: bool,
+    moderator: bool,
+    owned: bool,
+    edited: bool,
+    link: String,
+}
+
+/// POST /api/comments/unreviewed
+async fn unreviewed(
+    State(db): State<SqlitePool>,
+    Json(req): Json<ApiRequest<ListCommentsRequest>>,
+) -> Result<Json<Vec<UnreviewedComment>>> {
+    let (_, user) = req.extract_verified(&db).await?;
+
+    require_moderator(&user)?;
+
+    let mut results = vec![];
+
+    let token = req.payload.as_ref().map_or(&None, |p| &p.token);
+
+    let unreviewed_comments = comments::unreviewed(&db).await?;
+
+    let pages = pages::find_all(&db, unreviewed_comments.iter().map(|c| c.id).collect()).await?;
+
+    for comment in unreviewed_comments {
+        let owned = match &token {
+            None => false,
+            Some(t) => t == &comment.token
+        };
+
+        let edited = comment.updated_at == comment.created_at;
+
+        results.push(UnreviewedComment {
+            id: comment.id,
+            parent_id: comment.parent_id,
+            name: comment.name,
+            html_body: comment.html_body,
+            body: comment.body,
+            avatar: comment.avatar,
+            created_at: comment.created_at,
+            updated_at: comment.updated_at,
+            op: comment.op,
+            moderator: comment.moderator,
+            owned,
+            edited,
+            link: pages.iter().find(|p| p.id == comment.page_id).unwrap().path.clone(),
+        });
+    }
+
+    Ok(Json(results))
+}
+
+#[derive(Serialize)]
 struct PostCommentResponse {
     token: Base64,
     comment: OwnedComment,
@@ -220,7 +283,7 @@ async fn create(
     State(db): State<SqlitePool>,
     Json(req): Json<ApiRequest<CommentData>>,
 ) -> Result<Json<PostCommentResponse>> {
-    Ok(post_comment(&db, req, None).await?)
+    post_comment(&db, req, None).await
 }
 
 /// POST /api/comment/42
@@ -229,7 +292,7 @@ async fn reply(
     Path(comment_id): Path<i64>,
     Json(req): Json<ApiRequest<CommentData>>,
 ) -> Result<Json<PostCommentResponse>> {
-    Ok(post_comment(&db, req, Some(comment_id)).await?)
+    post_comment(&db, req, Some(comment_id)).await
 }
 
 fn authorize_posting(site: &Site, user: &Option<User>, page: &Page) -> Result<()> {
@@ -240,10 +303,8 @@ fn authorize_posting(site: &Site, user: &Option<User>, page: &Page) -> Result<()
 }
 
 fn get_markdown(data: &str) -> Result<String> {
-    Ok(
-        markdown::to_html_with_options(data, &markdown::Options::gfm())
-            .map_err(|_| Error::UnprocessableEntity("Your comment contains invalid markdown"))?
-    )
+    markdown::to_html_with_options(data, &markdown::Options::gfm())
+        .map_err(|_| Error::UnprocessableEntity("Your comment contains invalid markdown"))
 }
 
 
@@ -255,7 +316,7 @@ async fn post_comment(
     match req.payload {
         None => Err(Error::UnprocessableEntity("Payload can't be blank")),
         Some(ref data) => {
-            if data.body.trim().len() < 1 { return Err(Error::UnprocessableEntity("Comment can't be blank")) }
+            if data.body.trim().is_empty() { return Err(Error::UnprocessableEntity("Comment can't be blank")) }
 
             let (site, user) = req.extract_verified(db).await?;
             let page = match parent_id {

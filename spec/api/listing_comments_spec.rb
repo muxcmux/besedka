@@ -281,3 +281,47 @@ RSpec.describe 'Filtering comments' do
     end
   end
 end
+
+RSpec.describe 'listing unreviewed comments' do
+  let!(:site) { add_site('test', private: false, anonymous: true, moderated: true) }
+  let!(:s) { sign({ name: 'non-moderator', moderator: false }, site) }
+
+  before do
+    post('/api/comment', { site: 'test', path: '/', payload: { body: 'Unreviewed comment' } })
+    post('/api/comment/1', { site: 'test', path: '/', payload: { body: 'Unreviewed reply' } })
+  end
+
+  context 'anonymous user' do
+    it 'is not allowed to see the list' do
+      request = post('/api/comments/unreviewed', { site: 'test', path: '/' })
+      expect(request.status).to eq(401)
+      expect(request.body).to match(/Authentication required/)
+    end
+  end
+
+  context 'a non-moderator' do
+    it 'is not allowed to see the list' do
+      request = post('/api/comments/unreviewed', { site: 'test', path: '/', user: s.first, signature: s.last })
+      expect(request.status).to eq(403)
+      expect(request.body).to match(/You are not allowed/)
+    end
+  end
+
+  context 'a moderator' do
+    let!(:s) { sign({ name: 'moderator', moderator: true }, site) }
+
+    it 'is allowed to see the list' do
+      comments = JSON.parse(
+        post('/api/comments/unreviewed', { site: 'test', path: '/', user: s.first, signature: s.last }).body,
+        symbolize_names: true
+      )
+
+      expect(comments).to match(
+        [
+          hash_including(id: 1, name: 'Anonymous', body: 'Unreviewed comment'),
+          hash_including(id: 2, name: 'Anonymous', body: 'Unreviewed reply')
+        ]
+      )
+    end
+  end
+end

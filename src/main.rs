@@ -1,5 +1,5 @@
 use besedka::{cli, server};
-use sqlx::{migrate, SqlitePool};
+use sqlx::SqlitePool;
 
 use tracing_subscriber::prelude::*;
 
@@ -17,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
     let db = SqlitePool::connect_lazy(&args.db_uri()).expect("Can't connect to database");
 
     #[cfg(not(debug_assertions))]
-    migrate!()
+    sqlx::migrate!()
         .run(&db)
         .await
         .expect("Couldn't migrate database");

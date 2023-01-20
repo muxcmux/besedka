@@ -23,21 +23,19 @@ pub struct Comment {
 }
 
 pub async fn find(db: &SqlitePool, id: i64) -> sqlx::Result<Comment> {
-    Ok(
-        query_as!(
-            Comment,
-            r#"
-                SELECT
-                id, page_id, parent_id, avatar, name,
-                html_body, body, reviewed, moderator, op,
-                created_at as "created_at: DateTime<Utc>",
-                updated_at as "updated_at: DateTime<Utc>",
-                token as "token: Base64"
-                FROM comments WHERE id = ?
-            "#,
-            id
-        ).fetch_one(db).await?
-    )
+    query_as!(
+        Comment,
+        r#"
+            SELECT
+            id, page_id, parent_id, avatar, name,
+            html_body, body, reviewed, moderator, op,
+            created_at as "created_at: DateTime<Utc>",
+            updated_at as "updated_at: DateTime<Utc>",
+            token as "token: Base64"
+            FROM comments WHERE id = ?
+        "#,
+        id
+    ).fetch_one(db).await
 }
 
 pub async fn approve(db: &SqlitePool, id: i64) -> sqlx::Result<()> {
@@ -53,29 +51,25 @@ pub async fn approve(db: &SqlitePool, id: i64) -> sqlx::Result<()> {
 }
 
 pub async fn delete(db: &SqlitePool, id: i64) -> sqlx::Result<sqlx::sqlite::SqliteQueryResult> {
-    Ok(
-        query!("DELETE FROM comments WHERE id = ?", id)
-            .execute(db)
-            .await?
-    )
+    query!("DELETE FROM comments WHERE id = ?", id)
+        .execute(db)
+        .await
 }
 
 pub async fn find_root(db: &SqlitePool, id: i64) -> sqlx::Result<Comment> {
-    Ok(
-        query_as!(
-            Comment,
-            r#"
-                SELECT
-                id, page_id, parent_id, avatar, name,
-                html_body, body, reviewed, moderator, op,
-                created_at as "created_at: DateTime<Utc>",
-                updated_at as "updated_at: DateTime<Utc>",
-                token as "token: Base64"
-                FROM comments WHERE parent_id IS NULL AND id = ?
-            "#,
-            id
-        ).fetch_one(db).await?
-    )
+    query_as!(
+        Comment,
+        r#"
+            SELECT
+            id, page_id, parent_id, avatar, name,
+            html_body, body, reviewed, moderator, op,
+            created_at as "created_at: DateTime<Utc>",
+            updated_at as "updated_at: DateTime<Utc>",
+            token as "token: Base64"
+            FROM comments WHERE parent_id IS NULL AND id = ?
+        "#,
+        id
+    ).fetch_one(db).await
 }
 
 pub async fn root_comments(
@@ -155,6 +149,23 @@ pub async fn root_comments(
     }
 
     Ok((total.fetch_one(db).await?.get(0), results.fetch_all(db).await?))
+}
+
+pub async fn unreviewed(db: &SqlitePool) -> sqlx::Result<Vec<Comment>> {
+    query_as!(
+        Comment,
+        r#"
+            SELECT
+            id, page_id, parent_id, avatar, name,
+            html_body, body, reviewed, moderator, op,
+            created_at as "created_at: DateTime<Utc>",
+            updated_at as "updated_at: DateTime<Utc>",
+            token as "token: Base64"
+            FROM comments WHERE reviewed = ?
+            ORDER BY created_at
+        "#,
+        false
+    ).fetch_all(db).await
 }
 
 pub async fn replies(

@@ -10,27 +10,32 @@ pub struct Page {
 }
 
 pub async fn find(db: &SqlitePool, id: i64) -> sqlx::Result<Page> {
-    Ok(
-        query_as!(Page, "SELECT * FROM pages WHERE id = ?", id)
-        .fetch_one(db)
-        .await?
-    )
+    query_as!(Page, "SELECT * FROM pages WHERE id = ?", id)
+    .fetch_one(db)
+    .await
+}
+
+pub async fn find_all(db: &SqlitePool, ids: Vec<i64>) -> sqlx::Result<Vec<Page>> {
+    let ids: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+    let ids = ids.join(",");
+
+    let query = format!("SELECT * FROM pages WHERE id IN({ids})", ids = ids);
+
+    query_as::<_, Page>(&query)
+    .fetch_all(db)
+    .await
 }
 
 pub async fn find_by_site_and_path(db: &SqlitePool, site: &str, path: &str) -> sqlx::Result<Page> {
-    Ok(
-        query_as!(Page, "SELECT * FROM pages WHERE site = ? AND path = ? LIMIT 1", site, path)
-        .fetch_one(db)
-        .await?
-    )
+    query_as!(Page, "SELECT * FROM pages WHERE site = ? AND path = ? LIMIT 1", site, path)
+    .fetch_one(db)
+    .await
 }
 
 pub async fn toggle_lock(db: &SqlitePool, id: i64) -> sqlx::Result<sqlx::sqlite::SqliteQueryResult> {
-    Ok(
-        query!("UPDATE pages SET locked = NOT locked WHERE id = ?", id)
-        .execute(db)
-        .await?
-    )
+    query!("UPDATE pages SET locked = NOT locked WHERE id = ?", id)
+    .execute(db)
+    .await
 }
 
 pub async fn create_or_find_by_site_and_path(db: &SqlitePool, site: &str, path: &str) -> sqlx::Result<Page> {
