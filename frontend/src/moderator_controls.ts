@@ -125,7 +125,8 @@ export default class ModeratorControls {
   }
 
   async loadUnreviewedComments() {
-    const { status, json } = await request<CommentRecord[]>('/api/comments/unreviewed', window.__besedka.req)
+    const dummyMessage = createElement<HTMLDivElement>('div')
+    const { status, json } = await request<CommentRecord[]>('/api/comments/unreviewed', window.__besedka.req, 'POST', dummyMessage)
 
     if (status != 404 && json && json?.length != 0) this.buildUnreviewed(json)
   }
