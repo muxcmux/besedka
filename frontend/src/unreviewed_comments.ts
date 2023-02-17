@@ -24,9 +24,14 @@ export default class UnreviewedComments {
       const commentComponent = new Comment(comment)
       commentComponent.onApprove = (instance) => instance.destroy()
       commentComponent.onDelete = (instance) => {
-        if (instance.element.parentElement?.childElementCount == 1) {
-          instance.element.parentElement?.previousSibling?.remove()
-          instance.element.parentElement?.remove()
+        const parent = instance.element.parentElement
+        if (parent?.childElementCount == 1) {
+          parent?.previousSibling?.remove()
+          parent?.remove()
+          if (parent?.querySelectorAll('.besedka-comments').length == 0) {
+            this.element.close()
+            document.querySelector('.besedka-view-unreviewed-comments')?.remove()
+          }
         }
       }
 
