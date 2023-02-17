@@ -55,6 +55,7 @@ export default class App {
     const req: ApiRequest = {
       site: site || window.location.hostname,
       path: path || window.location.pathname,
+      title: document.title,
       user,
       signature,
       sid: logged?.sid

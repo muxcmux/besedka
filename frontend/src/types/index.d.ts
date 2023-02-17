@@ -35,6 +35,7 @@ declare global {
   interface ApiRequest {
     site: string
     path: string
+    title: string
     user?: string
     signature?: string
     sid?: string
