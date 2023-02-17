@@ -1,4 +1,5 @@
 import { createButton, createElement, message, request, safeParse } from "./utils"
+import UnreviewedComments from "./unreviewed_comments"
 
 export default class ModeratorControls {
   element: HTMLDivElement
@@ -10,7 +11,11 @@ export default class ModeratorControls {
 
   initUi() {
     this.element.innerHTML = ''
-    if (this.moderator()) this.buildLock()
+    if (this.moderator()) {
+      this.loadUnreviewedComments()
+      this.buildLock()
+    }
+
     if (this.loggedModerator()) this.buildLogout()
     if (!this.loggedModerator() && !this.signedUser()) this.buildLogin()
   }
@@ -50,7 +55,7 @@ export default class ModeratorControls {
   buildLogin() {
     const loginButton = createButton('Login', 'login', { title: 'Login' })
     const { msg, modal } = this.buildModal()
-    const form = createElement<HTMLFormElement>('form')
+    const form = createElement<HTMLFormElement>('form', 'login-form')
     const name = createElement<HTMLInputElement>('input', 'login-name', { placeholder: 'User' })
     const pass = createElement<HTMLInputElement>('input', 'login-password', { placeholder: 'Pass', type: 'password' })
     const login = createButton('Login', '', { title: 'Login' })
@@ -108,5 +113,20 @@ export default class ModeratorControls {
     })
 
     this.element.append(lock)
+  }
+
+  buildUnreviewed(comments: CommentRecord[]) {
+    const button = createButton('View unreviewed comments', 'view-unreviewed-comments')
+    const { modal } = this.buildModal()
+    const unreviewed = new UnreviewedComments(modal, comments)
+    this.element.append(modal)
+    this.element.append(button)
+    button.addEventListener('click', () => unreviewed.open())
+  }
+
+  async loadUnreviewedComments() {
+    const { status, json } = await request<CommentRecord[]>('/api/comments/unreviewed', window.__besedka.req)
+
+    if (status != 404 && json && json?.length != 0) this.buildUnreviewed(json)
   }
 }

@@ -225,7 +225,9 @@ struct UnreviewedComment {
     moderator: bool,
     owned: bool,
     edited: bool,
-    link: String,
+    reviewed: bool,
+    page_path: String,
+    page_title: Option<String>,
 }
 
 /// POST /api/comments/unreviewed
@@ -243,7 +245,7 @@ async fn unreviewed(
 
     let unreviewed_comments = comments::unreviewed(&db).await?;
 
-    let pages = pages::find_all(&db, unreviewed_comments.iter().map(|c| c.id).collect()).await?;
+    let pages = pages::find_all(&db, unreviewed_comments.iter().map(|c| c.page_id).collect()).await?;
 
     for comment in unreviewed_comments {
         let owned = match &token {
@@ -252,6 +254,7 @@ async fn unreviewed(
         };
 
         let edited = comment.updated_at == comment.created_at;
+        let page = pages.iter().find(|p| p.id == comment.page_id).unwrap();
 
         results.push(UnreviewedComment {
             id: comment.id,
@@ -266,7 +269,9 @@ async fn unreviewed(
             moderator: comment.moderator,
             owned,
             edited,
-            link: pages.iter().find(|p| p.id == comment.page_id).unwrap().path.clone(),
+            reviewed: comment.reviewed,
+            page_path: page.path.clone(),
+            page_title: page.title.clone(),
         });
     }
 
@@ -320,7 +325,7 @@ async fn post_comment(
 
             let (site, user) = req.extract_verified(db).await?;
             let page = match parent_id {
-                None => pages::create_or_find_by_site_and_path(db, &req.site, &req.path).await?,
+                None => pages::create_or_find_by_site_and_path(db, &req.site, &req.path, &req.title).await?,
                 Some(pid) => {
                     let parent = comments::find_root(db, pid).await?;
                     pages::find(db, parent.page_id).await?
@@ -418,7 +423,7 @@ async fn update(
     match req.payload {
         None => Err(Error::UnprocessableEntity("Payload can't be blank")),
         Some(ref data) => {
-            if data.body.trim().len() < 1 { return Err(Error::UnprocessableEntity("Comment can't be blank")) }
+            if data.body.trim().is_empty() { return Err(Error::UnprocessableEntity("Comment can't be blank")) }
 
             let (_, user) = req.extract_verified(&db).await?;
 
@@ -468,7 +473,7 @@ async fn destroy(
 
     ensure_modifiable(
         user.as_ref(),
-        req.payload.as_ref().and_then(|p| Some(p)),
+        req.payload.as_ref(),
         &comment
     )?;
 

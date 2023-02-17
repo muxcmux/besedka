@@ -6,7 +6,8 @@ pub struct Page {
   pub id: i64,
   pub site: String,
   pub path: String,
-  pub locked: bool
+  pub locked: bool,
+  pub title: Option<String>,
 }
 
 pub async fn find(db: &SqlitePool, id: i64) -> sqlx::Result<Page> {
@@ -38,12 +39,13 @@ pub async fn toggle_lock(db: &SqlitePool, id: i64) -> sqlx::Result<sqlx::sqlite:
     .await
 }
 
-pub async fn create_or_find_by_site_and_path(db: &SqlitePool, site: &str, path: &str) -> sqlx::Result<Page> {
+pub async fn create_or_find_by_site_and_path(db: &SqlitePool, site: &str, path: &str, title: &Option<String>) -> sqlx::Result<Page> {
     let mut tx = db.begin().await?;
 
-    let page = match query_as::<_, Page>("INSERT INTO pages (site, path) VALUES(?, ?) RETURNING * ")
+    let page = match query_as::<_, Page>("INSERT INTO pages (site, path, title) VALUES(?, ?, ?) RETURNING * ")
         .bind(site)
         .bind(path)
+        .bind(title)
         .fetch_one(&mut tx)
         .await {
             Ok(page) => Ok(page),

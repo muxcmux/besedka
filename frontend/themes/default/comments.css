@@ -3,7 +3,7 @@
   margin: 0 0 1rem var(--lhs-gap);
 }
 
-#besedka-comments {
+.besedka-comments {
   margin: 0 0 var(--gap);
   padding: 0;
   list-style: none;

@@ -69,7 +69,7 @@ impl User {
 
     fn from_signed_user(user: SignedUser) -> Self {
         Self {
-            name: user.name.unwrap_or(String::from("Anonymous")),
+            name: user.name.unwrap_or_else(|| String::from("Anonymous")),
             moderator: user.moderator.unwrap_or(false),
             op: user.op.unwrap_or(false),
             avatar: user.avatar,
@@ -81,13 +81,14 @@ impl User {
 struct ApiRequest<T> {
     site: String,
     path: String,
+    title: Option<String>,
     user: Option<Base64>,
     signature: Option<Base64>,
     sid: Option<Base64>,
     payload: Option<T>
 }
 
-#[derive(Clone, Debug, sqlx::Type, PartialEq)]
+#[derive(Clone, Debug, sqlx::Type, PartialEq, Eq)]
 #[sqlx(transparent)]
 pub struct Base64(Vec<u8>);
 

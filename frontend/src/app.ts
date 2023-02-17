@@ -103,7 +103,7 @@ export default class App {
       <form id="besedka-new-comment"></form>
       <div id="besedka-message"></div>
       <h3 id="besedka-heading"></h3>
-      <ol id="besedka-comments"></ol>
+      <ol class="besedka-comments" id="besedka-comments"></ol>
       <div id="besedka-end-of-comments"></div>
       <div id="besedka-credits">Comments by <a href="https://github.com/muxcmux/besedka" target="_blank">Besedka</a></div>
     `

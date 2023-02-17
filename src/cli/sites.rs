@@ -2,8 +2,8 @@ use crate::db::sites::{find, insert, Site, all, self};
 use sqlx::SqlitePool;
 
 pub async fn print(db: &SqlitePool, site: &str) {
-    match find(db, &site).await {
-        Err(_) => println!("Site {} not found. Try adding it first:\n$ besedka site add {}", &site, &site),
+    match find(db, site).await {
+        Err(_) => println!("Site {} not found. Try adding it first:\n$ besedka site add {}", site, site),
         Ok(cfg) => print_site(&cfg)
     }
 }
@@ -21,7 +21,7 @@ pub async fn list(db: &SqlitePool) {
 }
 
 pub async fn delete(db: &SqlitePool, site: &str) {
-    match find(db, &site).await {
+    match find(db, site).await {
         Err(_) => println!("Site {} not found.", site),
         Ok(_) => match sites::delete(db, site).await {
             Err(e) => println!("{}", e),

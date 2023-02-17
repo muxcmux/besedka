@@ -22,6 +22,8 @@ declare global {
     moderator: boolean
     edited: boolean
     replies?: CommentRecord[]
+    page_path?: string
+    page_title?: string
   }
 
   interface CommentsResponse {
@@ -58,7 +60,7 @@ declare global {
   }
 
   interface UpdateCommentResponse {
-    body: string,
+    body: string
     html_body: string
   }
 
@@ -70,10 +72,9 @@ declare global {
   }
 
   interface LoginResponse {
-    name: string,
-    sid: string,
+    name: string
+    sid: string
     avatar?: string
     op?: boolean
   }
 }
-

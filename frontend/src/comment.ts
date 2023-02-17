@@ -6,6 +6,8 @@ const TIME_TO_EDIT = 3 * 60
 
 export default class Comment {
   editing = false
+  onApprove: (instance: Comment) => void
+  onDelete: (instance: Comment) => void
   comment: CommentRecord
   replyForm?: NewCommentForm<PostCommentResponse>
   replyButton?: HTMLButtonElement
@@ -18,6 +20,17 @@ export default class Comment {
   body    = createElement('div', 'comment-body')
 
   constructor(comment: CommentRecord) {
+    this.onApprove = () => {}
+    this.onDelete = (instance) => {
+      if (instance.isReply()){
+        if (instance.element.parentElement!.querySelectorAll('li').length == 1) {
+          instance.element.parentElement!.parentElement!.classList.remove('besedka-has-replies');
+        }
+      } else {
+        if (instance.comment.reviewed) window.__besedka.updateCount(window.__besedka.commentCount - 1)
+      }
+    }
+
     this.comment = comment
     this.buildComment()
 
@@ -97,6 +110,7 @@ export default class Comment {
       if (status == 200) {
         this.element.classList.remove('besedka-unreviewed-comment')
         button.remove()
+        this.onApprove(this)
       }
     })
     return button
@@ -182,13 +196,7 @@ export default class Comment {
   }
 
   destroy() {
-    if (this.isReply()){
-      if (this.element.parentElement!.querySelectorAll('li').length == 1) {
-        this.element.parentElement!.parentElement!.classList.remove('besedka-has-replies');
-      }
-    } else {
-      if (this.comment.reviewed) window.__besedka.updateCount(window.__besedka.commentCount - 1)
-    }
+    this.onDelete(this)
     this.element.remove()
   }
 }

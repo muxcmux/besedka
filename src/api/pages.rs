@@ -16,7 +16,7 @@ async fn toggle_lock(
 
     require_moderator(&user)?;
 
-    let page = create_or_find_by_site_and_path(&db, &req.site, &req.path).await?;
+    let page = create_or_find_by_site_and_path(&db, &req.site, &req.path, &req.title).await?;
 
     pages::toggle_lock(&db, page.id).await?;
 

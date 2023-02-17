@@ -5,11 +5,13 @@
 @import "default/avatar";
 @import "default/new_comment";
 @import "default/edit_comment";
+@import "default/login";
 @import "default/preview";
 @import "default/comments";
 @import "default/replies";
 @import "default/controls";
-@import "default/md.css";
+@import "default/md";
+@import "default/unreviewed";
 @import "default/credits";
 
 .besedka-locked {

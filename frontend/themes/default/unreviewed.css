@@ -1,0 +1,6 @@
+.besedka-unreviewed-page {
+  display: flex;
+  flex-direction: column;
+
+  small { opacity: .5 }
+}
