@@ -235,7 +235,7 @@ async fn unreviewed(
     State(db): State<SqlitePool>,
     Json(req): Json<ApiRequest<ListCommentsRequest>>,
 ) -> Result<Json<Vec<UnreviewedComment>>> {
-    let (_, user) = req.extract_verified(&db).await?;
+    let (site, user) = req.extract_verified(&db).await?;
 
     require_moderator(&user)?;
 
@@ -243,7 +243,7 @@ async fn unreviewed(
 
     let token = req.payload.as_ref().map_or(&None, |p| &p.token);
 
-    let unreviewed_comments = comments::unreviewed(&db).await?;
+    let unreviewed_comments = comments::unreviewed(&db, &site).await?;
 
     let pages = pages::find_all(&db, unreviewed_comments.iter().map(|c| c.page_id).collect()).await?;
 

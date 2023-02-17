@@ -3,7 +3,7 @@ use sqlx::{SqlitePool, FromRow, query_as, query, Row};
 
 use crate::api::{Base64, Result, Cursor};
 
-use super::UTC_DATETIME_FORMAT;
+use super::{UTC_DATETIME_FORMAT, sites::Site};
 
 #[derive(FromRow, Clone, Debug)]
 pub struct Comment {
@@ -151,20 +151,25 @@ pub async fn root_comments(
     Ok((total.fetch_one(db).await?.get(0), results.fetch_all(db).await?))
 }
 
-pub async fn unreviewed(db: &SqlitePool) -> sqlx::Result<Vec<Comment>> {
+pub async fn unreviewed(db: &SqlitePool, site: &Site) -> sqlx::Result<Vec<Comment>> {
     query_as!(
         Comment,
         r#"
             SELECT
-            id, page_id, parent_id, avatar, name,
+            comments.id, page_id, parent_id, avatar, name,
             html_body, body, reviewed, moderator, op,
             created_at as "created_at: DateTime<Utc>",
             updated_at as "updated_at: DateTime<Utc>",
             token as "token: Base64"
-            FROM comments WHERE reviewed = ?
+            FROM comments
+            LEFT JOIN pages
+            ON pages.id = comments.page_id
+            WHERE comments.reviewed = ?
+            AND pages.site = ?
             ORDER BY created_at
         "#,
-        false
+        false,
+        site.site
     ).fetch_all(db).await
 }
 
