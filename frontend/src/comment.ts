@@ -27,7 +27,7 @@ export default class Comment {
           instance.element.parentElement!.parentElement!.classList.remove('besedka-has-replies');
         }
       } else {
-        if (instance.comment.reviewed) window.__besedka.updateCount(window.__besedka.commentCount - 1)
+        window.__besedka.updateCount(window.__besedka.commentCount - 1)
       }
     }
 

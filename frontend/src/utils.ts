@@ -11,6 +11,11 @@ export function message(msg: string, klass = 'error', element?: HTMLDivElement) 
   element.innerHTML = `<div class="besedka-${klass}">${msg}</div>`
 }
 
+export function clearError(element?: HTMLDivElement) {
+  document.querySelectorAll('#besedka-message .besedka-error').forEach(e => e.remove())
+  if (element) element.innerHTML = ''
+}
+
 export function clearMessage(element?: HTMLDivElement) {
   document.getElementById('besedka-message')!.innerHTML = ''
   if (element) element.innerHTML = ''
@@ -57,7 +62,7 @@ export async function request<T>(endpoint: string, data: {}, method?: string, er
     if (response.status > 399 && response.status != 404) {
       message(text, 'error', errorTarget)
     } else {
-      clearMessage(errorTarget)
+      clearError(errorTarget)
     }
 
     const contentType = response.headers.get("content-type");

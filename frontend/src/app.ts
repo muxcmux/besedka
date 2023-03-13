@@ -1,6 +1,6 @@
 import NewCommentForm from "./new_comment_form"
 import Comment from "./comment"
-import {getToken, message, request, setToken, safeParse} from "./utils"
+import {getToken, message, request, setToken, safeParse, clearMessage} from "./utils"
 import ModeratorControls from "./moderator_controls"
 
 export default class App {
@@ -90,8 +90,9 @@ export default class App {
       this.element.classList.remove('besedka-locked')
       new NewCommentForm<PostCommentResponse>(document.getElementById('besedka-new-comment') as HTMLFormElement, ({ token, comment }) => {
         setToken(token)
-        if (comment.reviewed) this.updateCount(this.commentCount + 1)
+        this.updateCount(this.commentCount + 1)
         this.comments.prepend(new Comment(comment).element)
+        clearMessage()
       })
     }
 
